@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDownRight, Globe, Shield, Zap, Menu, X } from "lucide-react";
+import { Globe, Shield, Zap } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -60,7 +60,7 @@ const Footer = () => {
                 About
               </Link>
               <Link
-                href="#"
+                href="/faqs"
                 className="hover:text-cyan-400 transition-colors focus-visible:outline-offset-2 focus-visible:outline-2 focus-visible:outline-cyan-400 rounded-sm px-1"
               >
                 FAQs
