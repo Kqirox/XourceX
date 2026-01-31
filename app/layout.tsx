@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Outfit, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/context/WalletContext";
+import { AdminAuthProvider } from "@/context/AdminAuthContext";
 import { KYCProvider } from "@/context/KYCContext";
 import { WalletModal } from "@/components/WalletModal";
 import { KYCVerificationModal } from "@/components/KYCVerificationModal";
@@ -100,14 +101,15 @@ export default function RootLayout({
         className={`${outfit.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <WalletProvider>
-          <KYCProvider>
-            {/* <Navbar /> */}
-            <main className="">{children}</main>
-            <WalletModal />
-            <KYCVerificationModal />
-          </KYCProvider>
-        </WalletProvider>
+        <AdminAuthProvider>
+          <WalletProvider>
+            <KYCProvider>
+              <main className="">{children}</main>
+              <WalletModal />
+              <KYCVerificationModal />
+            </KYCProvider>
+          </WalletProvider>
+        </AdminAuthProvider>
       </body>
     </html>
   );
