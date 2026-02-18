@@ -55,42 +55,6 @@ The XOURCEX backend provides the following services:
 
 The server will start on `http://localhost:3000`.
 
-### Configuration
-
-Configuration is loaded from:
-1. `config/default.toml` - Default configuration
-2. `config/{RUN_ENV}.toml` - Environment-specific overrides
-3. Environment variables with `XOURCEX_` prefix
-
-### API Endpoints
-
-#### Health Check
-- `GET /health` - Basic health check
-- `GET /ready` - Readiness check with database connectivity
-
-#### Authentication
-- `POST /auth/login` - User login
-- `POST /auth/register` - User registration
-- `POST /auth/refresh` - Token refresh
-
-#### Identity & Wallet (Protected)
-- `POST /identity/users` - Create user
-- `GET /identity/users/{user_id}` - Get user details
-- `GET /identity/users/{user_id}/wallet` - Get user wallet
-- `GET /identity/resolve/{user_id}` - Resolve User ID to Stellar address
-
-#### Payments (Protected)
-- `POST /payments` - Create payment
-- `GET /payments/{id}` - Get payment details
-- `GET /payments/{id}/status` - Get payment status
-- `POST /payments/qr/generate` - Generate QR payment
-- `POST /payments/nfc/validate` - Validate NFC payment
-
-#### Admin (Protected, Admin Only)
-- `GET /admin/dashboard/stats` - Dashboard statistics
-- `GET /admin/transactions` - Transaction listing
-- `GET /admin/users/{user_id}/activity` - User activity log
-- `GET /admin/system/health` - System health status
 
 ## Development
 
