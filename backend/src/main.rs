@@ -31,5 +31,6 @@
 // }
 
 fn main() {
-    println!("{}", main)
+    println!("Hello, world!");
 }
+
