@@ -652,3 +652,256 @@ fn test_claim_with_wrong_code_fails() {
         &999999u32, // wrong code
     );
 }
+
+#[test]
+fn test_deactivate_plan_success() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let owner = create_test_address(&env, 1);
+
+    // Create a plan
+    let beneficiaries_data = vec![
+        &env,
+        (
+            String::from_str(&env, "Alice"),
+            String::from_str(&env, "alice@example.com"),
+            111111u32,
+            create_test_bytes(&env, "1111111111111111"),
+            10000u32,
+        ),
+    ];
+
+    let plan_id = client.create_inheritance_plan(
+        &owner,
+        &String::from_str(&env, "Test Plan"),
+        &String::from_str(&env, "Test Description"),
+        &1000000u64,
+        &DistributionMethod::LumpSum,
+        &beneficiaries_data,
+    );
+
+    // Deactivate the plan
+    let result = client.try_deactivate_inheritance_plan(&owner, &plan_id);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_deactivate_plan_unauthorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let owner = create_test_address(&env, 1);
+    let unauthorized = create_test_address(&env, 2);
+
+    // Create a plan
+    let beneficiaries_data = vec![
+        &env,
+        (
+            String::from_str(&env, "Alice"),
+            String::from_str(&env, "alice@example.com"),
+            111111u32,
+            create_test_bytes(&env, "1111111111111111"),
+            10000u32,
+        ),
+    ];
+
+    let plan_id = client.create_inheritance_plan(
+        &owner,
+        &String::from_str(&env, "Test Plan"),
+        &String::from_str(&env, "Test Description"),
+        &1000000u64,
+        &DistributionMethod::LumpSum,
+        &beneficiaries_data,
+    );
+
+    // Try to deactivate with unauthorized address
+    let result = client.try_deactivate_inheritance_plan(&unauthorized, &plan_id);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_deactivate_plan_not_found() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let owner = create_test_address(&env, 1);
+
+    // Try to deactivate a non-existent plan
+    let result = client.try_deactivate_inheritance_plan(&owner, &999u64);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_deactivate_plan_already_deactivated() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let owner = create_test_address(&env, 1);
+
+    // Create a plan
+    let beneficiaries_data = vec![
+        &env,
+        (
+            String::from_str(&env, "Alice"),
+            String::from_str(&env, "alice@example.com"),
+            111111u32,
+            create_test_bytes(&env, "1111111111111111"),
+            10000u32,
+        ),
+    ];
+
+    let plan_id = client.create_inheritance_plan(
+        &owner,
+        &String::from_str(&env, "Test Plan"),
+        &String::from_str(&env, "Test Description"),
+        &1000000u64,
+        &DistributionMethod::LumpSum,
+        &beneficiaries_data,
+    );
+
+    // Deactivate the plan
+    client.deactivate_inheritance_plan(&owner, &plan_id);
+
+    // Try to deactivate again
+    let result = client.try_deactivate_inheritance_plan(&owner, &plan_id);
+    assert!(result.is_err());
+}
+
+#[test]
+#[should_panic]
+fn test_claim_deactivated_plan_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let owner = create_test_address(&env, 1);
+
+    // Create a plan
+    let beneficiaries_data = vec![
+        &env,
+        (
+            String::from_str(&env, "Alice"),
+            String::from_str(&env, "alice@example.com"),
+            123456u32,
+            create_test_bytes(&env, "1111111111111111"),
+            10000u32,
+        ),
+    ];
+
+    let plan_id = client.create_inheritance_plan(
+        &owner,
+        &String::from_str(&env, "Test Plan"),
+        &String::from_str(&env, "Test Description"),
+        &1000000u64,
+        &DistributionMethod::LumpSum,
+        &beneficiaries_data,
+    );
+
+    // Deactivate the plan
+    client.deactivate_inheritance_plan(&owner, &plan_id);
+
+    // Try to claim from deactivated plan - should panic
+    client.claim_inheritance_plan(
+        &plan_id,
+        &String::from_str(&env, "alice@example.com"),
+        &123456u32,
+    );
+}
+
+#[test]
+fn test_deactivate_plan_with_multiple_beneficiaries() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let owner = create_test_address(&env, 1);
+
+    // Create a plan with multiple beneficiaries
+    let beneficiaries_data = vec![
+        &env,
+        (
+            String::from_str(&env, "Alice"),
+            String::from_str(&env, "alice@example.com"),
+            111111u32,
+            create_test_bytes(&env, "1111111111111111"),
+            5000u32,
+        ),
+        (
+            String::from_str(&env, "Bob"),
+            String::from_str(&env, "bob@example.com"),
+            222222u32,
+            create_test_bytes(&env, "2222222222222222"),
+            5000u32,
+        ),
+    ];
+
+    let plan_id = client.create_inheritance_plan(
+        &owner,
+        &String::from_str(&env, "Test Plan"),
+        &String::from_str(&env, "Test Description"),
+        &2000000u64,
+        &DistributionMethod::LumpSum,
+        &beneficiaries_data,
+    );
+
+    // Deactivate the plan
+    let result = client.try_deactivate_inheritance_plan(&owner, &plan_id);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_get_plan_details() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let owner = create_test_address(&env, 1);
+
+    // Create a plan
+    let beneficiaries_data = vec![
+        &env,
+        (
+            String::from_str(&env, "Alice"),
+            String::from_str(&env, "alice@example.com"),
+            111111u32,
+            create_test_bytes(&env, "1111111111111111"),
+            10000u32,
+        ),
+    ];
+
+    let plan_id = client.create_inheritance_plan(
+        &owner,
+        &String::from_str(&env, "Test Plan"),
+        &String::from_str(&env, "Test Description"),
+        &1000000u64,
+        &DistributionMethod::LumpSum,
+        &beneficiaries_data,
+    );
+
+    // Get plan details
+    let plan = client.get_plan_details(&plan_id);
+    assert!(plan.is_some());
+
+    let plan_data = plan.unwrap();
+    assert!(plan_data.is_active);
+    assert_eq!(plan_data.total_amount, 1000000u64);
+
+    // Deactivate and check again
+    client.deactivate_inheritance_plan(&owner, &plan_id);
+
+    let deactivated_plan = client.get_plan_details(&plan_id);
+    assert!(deactivated_plan.is_some());
+    assert!(!deactivated_plan.unwrap().is_active);
+}

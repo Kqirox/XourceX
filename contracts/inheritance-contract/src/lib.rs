@@ -45,6 +45,7 @@ pub struct InheritancePlan {
     pub total_allocation_bp: u32, // Total allocation in basis points
     pub owner: Address,           // Plan owner
     pub created_at: u64,
+    pub is_active: bool, // Plan activation status
 }
 
 #[contracterror]
@@ -67,6 +68,8 @@ pub enum InheritanceError {
     ClaimNotAllowedYet = 15,
     AlreadyClaimed = 16,
     BeneficiaryNotFound = 17,
+    PlanAlreadyDeactivated = 18,
+    PlanNotActive = 19,
 }
 
 #[contracttype]
@@ -100,6 +103,15 @@ pub struct BeneficiaryRemovedEvent {
     pub plan_id: u64,
     pub index: u32,
     pub allocation_bp: u32,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PlanDeactivatedEvent {
+    pub plan_id: u64,
+    pub owner: Address,
+    pub total_amount: u64,
+    pub deactivated_at: u64,
 }
 
 #[contract]
@@ -249,6 +261,18 @@ impl InheritanceContract {
     fn get_plan(env: &Env, plan_id: u64) -> Option<InheritancePlan> {
         let key = DataKey::Plan(plan_id);
         env.storage().persistent().get(&key)
+    }
+
+    /// Get plan details
+    ///
+    /// # Arguments
+    /// * `env` - The environment
+    /// * `plan_id` - The ID of the plan to retrieve
+    ///
+    /// # Returns
+    /// The InheritancePlan if found, None otherwise
+    pub fn get_plan_details(env: Env, plan_id: u64) -> Option<InheritancePlan> {
+        Self::get_plan(&env, plan_id)
     }
 
     /// Add a beneficiary to an existing inheritance plan
@@ -474,6 +498,7 @@ impl InheritanceContract {
             total_allocation_bp,
             owner: owner.clone(),
             created_at: env.ledger().timestamp(),
+            is_active: true,
         };
 
         // Store the plan and get the plan ID
@@ -505,6 +530,11 @@ impl InheritanceContract {
     ) -> Result<(), InheritanceError> {
         // Fetch the plan
         let plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
+
+        // Check if plan is active
+        if !plan.is_active {
+            return Err(InheritanceError::PlanNotActive);
+        }
 
         // Check if claim is allowed by distribution method
         if !Self::is_claim_time_valid(&env, &plan) {
@@ -562,6 +592,68 @@ impl InheritanceContract {
             plan_id,
             email
         );
+
+        Ok(())
+    }
+
+    /// Deactivate an existing inheritance plan
+    ///
+    /// # Arguments
+    /// * `env` - The environment
+    /// * `owner` - The plan owner (must authorize this call)
+    /// * `plan_id` - The ID of the plan to deactivate
+    ///
+    /// # Returns
+    /// Ok(()) on success
+    ///
+    /// # Errors
+    /// - Unauthorized: If caller is not the plan owner
+    /// - PlanNotFound: If plan_id doesn't exist
+    /// - PlanAlreadyDeactivated: If plan is already deactivated
+    ///
+    /// # Notes
+    /// Upon successful deactivation, the USDC associated with the plan should be
+    /// transferred back to the owner's wallet address. This function marks the plan
+    /// as inactive and emits a deactivation event.
+    pub fn deactivate_inheritance_plan(
+        env: Env,
+        owner: Address,
+        plan_id: u64,
+    ) -> Result<(), InheritanceError> {
+        // Require owner authorization
+        owner.require_auth();
+
+        // Get the plan
+        let mut plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
+
+        // Verify caller is the plan owner
+        if plan.owner != owner {
+            return Err(InheritanceError::Unauthorized);
+        }
+
+        // Check if plan is already deactivated
+        if !plan.is_active {
+            return Err(InheritanceError::PlanAlreadyDeactivated);
+        }
+
+        // Mark plan as inactive
+        plan.is_active = false;
+
+        // Store updated plan
+        Self::store_plan(&env, plan_id, &plan);
+
+        // Emit deactivation event
+        env.events().publish(
+            (symbol_short!("PLAN"), symbol_short!("DEACT")),
+            PlanDeactivatedEvent {
+                plan_id,
+                owner: owner.clone(),
+                total_amount: plan.total_amount,
+                deactivated_at: env.ledger().timestamp(),
+            },
+        );
+
+        log!(&env, "Inheritance plan {} deactivated by owner", plan_id);
 
         Ok(())
     }
