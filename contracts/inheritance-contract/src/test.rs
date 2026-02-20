@@ -1282,3 +1282,143 @@ fn test_admin_retrieval() {
     let all_deactivated = client.get_all_deactivated_plans(&admin);
     assert_eq!(all_deactivated.len(), 2);
 }
+
+#[test]
+fn test_get_claimed_plan() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let owner = create_test_address(&env, 1);
+    let beneficiaries = vec![
+        &env,
+        (
+            String::from_str(&env, "Alice"),
+            String::from_str(&env, "alice@example.com"),
+            123456u32,
+            create_test_bytes(&env, "1111"),
+            10000u32,
+        ),
+    ];
+
+    let plan_id = client.create_inheritance_plan(
+        &owner,
+        &String::from_str(&env, "Will"),
+        &String::from_str(&env, "Inheritance Plan"),
+        &1000u64,
+        &DistributionMethod::LumpSum,
+        &beneficiaries,
+    );
+
+    // Should error because it's not claimed yet
+    let result = client.try_get_claimed_plan(&owner, &plan_id);
+    assert!(result.is_err());
+
+    client.claim_inheritance_plan(
+        &plan_id,
+        &String::from_str(&env, "alice@example.com"),
+        &123456u32,
+    );
+
+    // Should succeed now
+    let plan = client.get_claimed_plan(&owner, &plan_id);
+    assert_eq!(plan.total_amount, 1000u64);
+}
+
+#[test]
+fn test_get_user_claimed_plans() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let owner = create_test_address(&env, 1);
+    let beneficiaries = vec![
+        &env,
+        (
+            String::from_str(&env, "Alice"),
+            String::from_str(&env, "alice@example.com"),
+            123456u32,
+            create_test_bytes(&env, "1111"),
+            10000u32,
+        ),
+    ];
+
+    let plan1 = client.create_inheritance_plan(
+        &owner,
+        &String::from_str(&env, "Will 1"),
+        &String::from_str(&env, "Plan"),
+        &1000u64,
+        &DistributionMethod::LumpSum,
+        &beneficiaries,
+    );
+
+    let plan2 = client.create_inheritance_plan(
+        &owner,
+        &String::from_str(&env, "Will 2"),
+        &String::from_str(&env, "Plan"),
+        &2000u64,
+        &DistributionMethod::LumpSum,
+        &beneficiaries,
+    );
+
+    client.claim_inheritance_plan(
+        &plan1,
+        &String::from_str(&env, "alice@example.com"),
+        &123456u32,
+    );
+    client.claim_inheritance_plan(
+        &plan2,
+        &String::from_str(&env, "alice@example.com"),
+        &123456u32,
+    );
+
+    let plans = client.get_user_claimed_plans(&owner);
+    assert_eq!(plans.len(), 2);
+}
+
+#[test]
+fn test_get_all_claimed_plans() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let admin = create_test_address(&env, 99);
+    client.initialize_admin(&admin);
+
+    let owner = create_test_address(&env, 1);
+    let beneficiaries = vec![
+        &env,
+        (
+            String::from_str(&env, "Alice"),
+            String::from_str(&env, "alice@example.com"),
+            123456u32,
+            create_test_bytes(&env, "1111"),
+            10000u32,
+        ),
+    ];
+
+    let plan1 = client.create_inheritance_plan(
+        &owner,
+        &String::from_str(&env, "Will"),
+        &String::from_str(&env, "Plan"),
+        &1000u64,
+        &DistributionMethod::LumpSum,
+        &beneficiaries,
+    );
+
+    client.claim_inheritance_plan(
+        &plan1,
+        &String::from_str(&env, "alice@example.com"),
+        &123456u32,
+    );
+
+    let plans = client.get_all_claimed_plans(&admin);
+    assert_eq!(plans.len(), 1);
+
+    let non_admin = create_test_address(&env, 2);
+    let result = client.try_get_all_claimed_plans(&non_admin);
+    assert!(result.is_err());
+}
