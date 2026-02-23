@@ -32,12 +32,13 @@ async fn plan_creation_rolls_back_on_transfer_revert() {
     .await
     .expect("Failed to set KYC approved");
 
+    let exp = (chrono::Utc::now() + chrono::Duration::hours(24)).timestamp() as usize;
     let token = encode(
         &Header::default(),
         &xourcex_backend::auth::UserClaims {
             user_id,
             email: format!("user-{}@example.com", user_id),
-            exp: 10000000000, // distant future
+            exp,
         },
         &EncodingKey::from_secret(b"secret_key_change_in_production"),
     )
