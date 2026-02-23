@@ -40,6 +40,11 @@ pub async fn create_app(db: PgPool, config: Config) -> Result<Router, ApiError> 
         .route("/health", get(health_check))
         .route("/health/db", get(db_health_check))
         .route("/admin/login", post(crate::auth::login_admin))
+        .route(
+            "/api/auth/nonce/:wallet_address",
+            get(crate::auth::generate_nonce),
+        )
+        .route("/api/auth/wallet-login", post(crate::auth::wallet_login))
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -59,6 +64,7 @@ pub async fn create_app(db: PgPool, config: Config) -> Result<Router, ApiError> 
         .route("/api/plans/:plan_id", get(get_plan))
         .route("/api/plans/:plan_id", axum::routing::delete(cancel_plan))
         .route("/api/plans", post(create_plan))
+        .route("/api/kyc/submit", post(submit_kyc))
         .route(
             "/api/admin/plans/due-for-claim",
             get(get_all_due_for_claim_plans_admin),
@@ -87,6 +93,14 @@ async fn db_health_check(
     Ok(Json(
         json!({ "status": "ok", "message": "Database is connected" }),
     ))
+}
+
+async fn submit_kyc(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedUser(user): AuthenticatedUser,
+) -> Result<Json<KycRecord>, ApiError> {
+    let status = KycService::submit_kyc(&state.db, user.user_id).await?;
+    Ok(Json(status))
 }
 
 async fn create_plan(
