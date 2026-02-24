@@ -42,12 +42,13 @@ pub async fn create_app(db: PgPool, config: Config) -> Result<Router, ApiError> 
         .route("/health/db", get(db_health_check))
         .route("/login", post(crate::auth::login_user))
         .route("/admin/login", post(crate::auth::login_admin))
+        .route("/api/auth/nonce", post(crate::auth::get_nonce))
         .route(
             "/api/auth/nonce/:wallet_address",
             get(crate::auth::generate_nonce),
         )
-        .route("/auth/web3/nonce/:wallet", get(crate::auth::generate_nonce))
-        .route("/api/auth/wallet-login", post(crate::auth::wallet_login))
+        .route("/api/auth/web3-login", post(crate::auth::web3_login))
+        .route("/api/auth/wallet-login", post(crate::auth::web3_login))
         .layer(
             ServiceBuilder::new()
                 .layer(axum::middleware::from_fn_with_state(
