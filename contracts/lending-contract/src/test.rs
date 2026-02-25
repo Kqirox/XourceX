@@ -36,7 +36,7 @@ fn setup(env: &Env) -> (LendingContractClient<'_>, Address, Address, Address) {
 
     let contract_id = env.register_contract(None, LendingContract);
     let client = LendingContractClient::new(env, &contract_id);
-    client.initialize(&admin, &token_addr, &500u32, &2000u32, &15000u32); // 5% base, 20% multiplier, 150% collateral
+    client.initialize(&admin, &token_addr, &500u32, &2000u32, &15000u32, &10000u32); // 5% base, 20% multiplier, 150% collateral, 100% cap
 
     // Whitelist collateral token
     client.whitelist_collateral(&admin, &collateral_addr);
@@ -55,7 +55,8 @@ fn test_initialize_once() {
     let (client, token_addr, collateral_addr, admin) = setup(&env);
 
     // Second init must fail
-    let result = client.try_initialize(&admin, &token_addr, &500u32, &2000u32, &15000u32);
+    let result =
+        client.try_initialize(&admin, &token_addr, &500u32, &2000u32, &15000u32, &10000u32);
     assert!(result.is_err());
 }
 
@@ -819,4 +820,45 @@ fn test_collateral_ratio() {
 
     // Should be 150% (15000 bps)
     assert_eq!(client.get_collateral_ratio_bps(), 15000u32);
+}
+
+#[test]
+fn test_utilization_cap_enforced() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let token_addr = create_token_addr(&env);
+    let collateral_addr = create_token_addr(&env);
+
+    let contract_id = env.register_contract(None, LendingContract);
+    let client = LendingContractClient::new(&env, &contract_id);
+    client.initialize(&admin, &token_addr, &500u32, &2000u32, &15000u32, &8000u32); // 80% cap
+    client.whitelist_collateral(&admin, &collateral_addr);
+
+    let depositor = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    mint_to(&env, &token_addr, &depositor, 100_000);
+    mint_to(&env, &collateral_addr, &borrower, 100_000);
+
+    client.deposit(&depositor, &10_000u64);
+
+    // Try to borrow 8,001 (80.01% utilization) - should fail
+    let result = client.try_borrow(
+        &borrower,
+        &8_001u64,
+        &collateral_addr,
+        &12_002u64,
+        &(30 * 24 * 60 * 60),
+    );
+    assert_eq!(result, Err(Ok(LendingError::UtilizationCapExceeded)));
+
+    // Borrow exactly 8,000 (80% utilization) - should succeed
+    let loan_id = client.borrow(
+        &borrower,
+        &8_000u64,
+        &collateral_addr,
+        &12_000u64,
+        &(30 * 24 * 60 * 60),
+    );
+    assert!(loan_id > 0);
 }

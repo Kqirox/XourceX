@@ -22,6 +22,7 @@ pub struct PoolState {
     pub total_borrowed: u64, // Total principal currently on loan
     pub base_rate_bps: u32,  // Base interest rate in basis points (1/10000)
     pub multiplier_bps: u32, // Multiplier applied to utilization to get variable rate
+    pub utilization_cap_bps: u32, // Maximum utilization allowed in basis points (e.g., 8000 = 80%)
 }
 
 const SECONDS_IN_YEAR: u64 = 31_536_000;
@@ -108,6 +109,7 @@ pub enum LendingError {
     Unauthorized = 10,
     InsufficientCollateral = 11,
     CollateralNotWhitelisted = 12,
+    UtilizationCapExceeded = 13,
 }
 
 // ─────────────────────────────────────────────────
@@ -148,6 +150,7 @@ impl LendingContract {
         base_rate_bps: u32,
         multiplier_bps: u32,
         collateral_ratio_bps: u32,
+        utilization_cap_bps: u32,
     ) -> Result<(), LendingError> {
         admin.require_auth();
         if env.storage().instance().has(&DataKey::Admin) {
@@ -166,6 +169,7 @@ impl LendingContract {
                 total_borrowed: 0,
                 base_rate_bps,
                 multiplier_bps,
+                utilization_cap_bps,
             },
         );
         Ok(())
@@ -485,6 +489,13 @@ impl LendingContract {
         let available = pool.total_deposits.saturating_sub(pool.total_borrowed);
         if amount > available {
             return Err(LendingError::InsufficientLiquidity);
+        }
+
+        // Check utilization cap
+        let new_borrowed = pool.total_borrowed + amount;
+        let new_utilization_bps = Self::get_utilization_bps(new_borrowed, pool.total_deposits);
+        if new_utilization_bps > pool.utilization_cap_bps {
+            return Err(LendingError::UtilizationCapExceeded);
         }
 
         // Transfer collateral from borrower to contract
