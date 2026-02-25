@@ -39,7 +39,10 @@ fn normalize_pagination(query: &PaginationQuery) -> (u32, u32) {
 }
 
 pub async fn create_app(db: PgPool, config: Config) -> Result<Router, ApiError> {
-    let state = Arc::new(AppState { db, config });
+    let state = Arc::new(AppState {
+        db: db.clone(),
+        config,
+    });
 
     // Rate limiting configuration
     let governor_conf = Arc::new(
