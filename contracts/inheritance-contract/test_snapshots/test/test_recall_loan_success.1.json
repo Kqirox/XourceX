@@ -53,7 +53,7 @@
                                 "u32": 123456
                               },
                               {
-                                "bytes": "31313131"
+                                "bytes": "31313131313131313131313131313131"
                               },
                               {
                                 "u32": 10000
@@ -68,7 +68,7 @@
                         "symbol": "description"
                       },
                       "val": {
-                        "string": "Plan"
+                        "string": "My will"
                       }
                     },
                     {
@@ -104,7 +104,7 @@
                         "symbol": "plan_name"
                       },
                       "val": {
-                        "string": "Will 1"
+                        "string": "Will"
                       }
                     },
                     {
@@ -120,7 +120,7 @@
                         "symbol": "total_amount"
                       },
                       "val": {
-                        "u64": 1000
+                        "u64": 100000
                       }
                     }
                   ]
@@ -144,7 +144,7 @@
                     {
                       "i128": {
                         "hi": 0,
-                        "lo": 20
+                        "lo": 2000
                       }
                     }
                   ]
@@ -167,162 +167,7 @@
                     {
                       "i128": {
                         "hi": 0,
-                        "lo": 980
-                      }
-                    }
-                  ]
-                }
-              },
-              "sub_invocations": []
-            }
-          ]
-        }
-      ]
-    ],
-    [
-      [
-        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
-        {
-          "function": {
-            "contract_fn": {
-              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "function_name": "create_inheritance_plan",
-              "args": [
-                {
-                  "map": [
-                    {
-                      "key": {
-                        "symbol": "beneficiaries_data"
-                      },
-                      "val": {
-                        "vec": [
-                          {
-                            "vec": [
-                              {
-                                "string": "Alice"
-                              },
-                              {
-                                "string": "alice@example.com"
-                              },
-                              {
-                                "u32": 123456
-                              },
-                              {
-                                "bytes": "31313131"
-                              },
-                              {
-                                "u32": 10000
-                              }
-                            ]
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "description"
-                      },
-                      "val": {
-                        "string": "Plan"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "distribution_method"
-                      },
-                      "val": {
-                        "vec": [
-                          {
-                            "symbol": "LumpSum"
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "is_lendable"
-                      },
-                      "val": {
-                        "bool": true
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "owner"
-                      },
-                      "val": {
-                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "plan_name"
-                      },
-                      "val": {
-                        "string": "Will 2"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "token"
-                      },
-                      "val": {
-                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "total_amount"
-                      },
-                      "val": {
-                        "u64": 2000
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-          },
-          "sub_invocations": [
-            {
-              "function": {
-                "contract_fn": {
-                  "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
-                  "function_name": "transfer",
-                  "args": [
-                    {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                    },
-                    {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
-                    },
-                    {
-                      "i128": {
-                        "hi": 0,
-                        "lo": 40
-                      }
-                    }
-                  ]
-                }
-              },
-              "sub_invocations": []
-            },
-            {
-              "function": {
-                "contract_fn": {
-                  "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
-                  "function_name": "transfer",
-                  "args": [
-                    {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                    },
-                    {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
-                    },
-                    {
-                      "i128": {
-                        "hi": 0,
-                        "lo": 1960
+                        "lo": 98000
                       }
                     }
                   ]
@@ -338,15 +183,18 @@
     [],
     [
       [
-        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
         {
           "function": {
             "contract_fn": {
               "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "function_name": "get_user_claimed_plans",
+              "function_name": "trigger_inheritance",
               "args": [
                 {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                },
+                {
+                  "u64": 1
                 }
               ]
             }
@@ -354,7 +202,61 @@
           "sub_invocations": []
         }
       ]
-    ]
+    ],
+    [
+      [
+        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+        {
+          "function": {
+            "contract_fn": {
+              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "function_name": "recall_loan",
+              "args": [
+                {
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                },
+                {
+                  "u64": 1
+                },
+                {
+                  "u64": 30000
+                }
+              ]
+            }
+          },
+          "sub_invocations": []
+        }
+      ]
+    ],
+    [],
+    [],
+    [
+      [
+        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+        {
+          "function": {
+            "contract_fn": {
+              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "function_name": "recall_loan",
+              "args": [
+                {
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                },
+                {
+                  "u64": 1
+                },
+                {
+                  "u64": 20000
+                }
+              ]
+            }
+          },
+          "sub_invocations": []
+        }
+      ]
+    ],
+    [],
+    []
   ],
   "ledger": {
     "protocol_version": 21,
@@ -373,7 +275,10 @@
             "key": {
               "vec": [
                 {
-                  "symbol": "AllClaimedPlans"
+                  "symbol": "InheritanceTrigger"
+                },
+                {
+                  "u64": 1
                 }
               ]
             },
@@ -390,59 +295,10 @@
                 "key": {
                   "vec": [
                     {
-                      "symbol": "AllClaimedPlans"
-                    }
-                  ]
-                },
-                "durability": "persistent",
-                "val": {
-                  "vec": [
+                      "symbol": "InheritanceTrigger"
+                    },
                     {
                       "u64": 1
-                    },
-                    {
-                      "u64": 2
-                    }
-                  ]
-                }
-              }
-            },
-            "ext": "v0"
-          },
-          4095
-        ]
-      ],
-      [
-        {
-          "contract_data": {
-            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-            "key": {
-              "vec": [
-                {
-                  "symbol": "Claim"
-                },
-                {
-                  "bytes": "4dc12112a25ef6d42b8c2032755ed6bff2f58ae06e380ffeb684fca8d903c2ae"
-                }
-              ]
-            },
-            "durability": "persistent"
-          }
-        },
-        [
-          {
-            "last_modified_ledger_seq": 0,
-            "data": {
-              "contract_data": {
-                "ext": "v0",
-                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-                "key": {
-                  "vec": [
-                    {
-                      "symbol": "Claim"
-                    },
-                    {
-                      "bytes": "4dc12112a25ef6d42b8c2032755ed6bff2f58ae06e380ffeb684fca8d903c2ae"
                     }
                   ]
                 },
@@ -451,15 +307,47 @@
                   "map": [
                     {
                       "key": {
-                        "symbol": "beneficiary_index"
+                        "symbol": "liquidation_triggered"
                       },
                       "val": {
-                        "u32": 0
+                        "bool": false
                       }
                     },
                     {
                       "key": {
-                        "symbol": "claimed_at"
+                        "symbol": "loan_freeze_active"
+                      },
+                      "val": {
+                        "bool": true
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "original_loaned"
+                      },
+                      "val": {
+                        "u64": 50000
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "recall_attempted"
+                      },
+                      "val": {
+                        "bool": true
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "recalled_amount"
+                      },
+                      "val": {
+                        "u64": 50000
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "settled_amount"
                       },
                       "val": {
                         "u64": 0
@@ -467,80 +355,10 @@
                     },
                     {
                       "key": {
-                        "symbol": "plan_id"
-                      },
-                      "val": {
-                        "u64": 2
-                      }
-                    }
-                  ]
-                }
-              }
-            },
-            "ext": "v0"
-          },
-          4095
-        ]
-      ],
-      [
-        {
-          "contract_data": {
-            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-            "key": {
-              "vec": [
-                {
-                  "symbol": "Claim"
-                },
-                {
-                  "bytes": "8a2ee6846fc61f805ff5a316f4bc438e000ccc886f674705e797a101ea3ccff7"
-                }
-              ]
-            },
-            "durability": "persistent"
-          }
-        },
-        [
-          {
-            "last_modified_ledger_seq": 0,
-            "data": {
-              "contract_data": {
-                "ext": "v0",
-                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-                "key": {
-                  "vec": [
-                    {
-                      "symbol": "Claim"
-                    },
-                    {
-                      "bytes": "8a2ee6846fc61f805ff5a316f4bc438e000ccc886f674705e797a101ea3ccff7"
-                    }
-                  ]
-                },
-                "durability": "persistent",
-                "val": {
-                  "map": [
-                    {
-                      "key": {
-                        "symbol": "beneficiary_index"
-                      },
-                      "val": {
-                        "u32": 0
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "claimed_at"
+                        "symbol": "triggered_at"
                       },
                       "val": {
                         "u64": 0
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "plan_id"
-                      },
-                      "val": {
-                        "u64": 1
                       }
                     }
                   ]
@@ -618,7 +436,7 @@
                                   "symbol": "bank_account"
                                 },
                                 "val": {
-                                  "bytes": "31313131"
+                                  "bytes": "31313131313131313131313131313131"
                                 }
                               },
                               {
@@ -663,7 +481,7 @@
                         "symbol": "description"
                       },
                       "val": {
-                        "string": "Plan"
+                        "string": "My will"
                       }
                     },
                     {
@@ -691,7 +509,7 @@
                         "symbol": "is_lendable"
                       },
                       "val": {
-                        "bool": true
+                        "bool": false
                       }
                     },
                     {
@@ -707,7 +525,7 @@
                         "symbol": "plan_name"
                       },
                       "val": {
-                        "string": "Will 1"
+                        "string": "Will"
                       }
                     },
                     {
@@ -723,7 +541,7 @@
                         "symbol": "total_amount"
                       },
                       "val": {
-                        "u64": 0
+                        "u64": 98000
                       }
                     },
                     {
@@ -733,249 +551,6 @@
                       "val": {
                         "u64": 0
                       }
-                    }
-                  ]
-                }
-              }
-            },
-            "ext": "v0"
-          },
-          4095
-        ]
-      ],
-      [
-        {
-          "contract_data": {
-            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-            "key": {
-              "vec": [
-                {
-                  "symbol": "Plan"
-                },
-                {
-                  "u64": 2
-                }
-              ]
-            },
-            "durability": "persistent"
-          }
-        },
-        [
-          {
-            "last_modified_ledger_seq": 0,
-            "data": {
-              "contract_data": {
-                "ext": "v0",
-                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-                "key": {
-                  "vec": [
-                    {
-                      "symbol": "Plan"
-                    },
-                    {
-                      "u64": 2
-                    }
-                  ]
-                },
-                "durability": "persistent",
-                "val": {
-                  "map": [
-                    {
-                      "key": {
-                        "symbol": "asset_type"
-                      },
-                      "val": {
-                        "symbol": "USDC"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "beneficiaries"
-                      },
-                      "val": {
-                        "vec": [
-                          {
-                            "map": [
-                              {
-                                "key": {
-                                  "symbol": "allocation_bp"
-                                },
-                                "val": {
-                                  "u32": 10000
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "bank_account"
-                                },
-                                "val": {
-                                  "bytes": "31313131"
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "hashed_claim_code"
-                                },
-                                "val": {
-                                  "bytes": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "hashed_email"
-                                },
-                                "val": {
-                                  "bytes": "3e5718fea51a8f3f5baca61c77afab473c1810f8b9db330273b4011ce92c787e"
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "hashed_full_name"
-                                },
-                                "val": {
-                                  "bytes": "08bb5e5d6eaac1049ede0893d30ed022b1a4d9b5b48db414871f51c9cb35283d"
-                                }
-                              }
-                            ]
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "created_at"
-                      },
-                      "val": {
-                        "u64": 0
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "description"
-                      },
-                      "val": {
-                        "string": "Plan"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "distribution_method"
-                      },
-                      "val": {
-                        "vec": [
-                          {
-                            "symbol": "LumpSum"
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "is_active"
-                      },
-                      "val": {
-                        "bool": true
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "is_lendable"
-                      },
-                      "val": {
-                        "bool": true
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "owner"
-                      },
-                      "val": {
-                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "plan_name"
-                      },
-                      "val": {
-                        "string": "Will 2"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "total_allocation_bp"
-                      },
-                      "val": {
-                        "u32": 10000
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "total_amount"
-                      },
-                      "val": {
-                        "u64": 0
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "total_loaned"
-                      },
-                      "val": {
-                        "u64": 0
-                      }
-                    }
-                  ]
-                }
-              }
-            },
-            "ext": "v0"
-          },
-          4095
-        ]
-      ],
-      [
-        {
-          "contract_data": {
-            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-            "key": {
-              "vec": [
-                {
-                  "symbol": "UserClaimedPlans"
-                },
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                }
-              ]
-            },
-            "durability": "persistent"
-          }
-        },
-        [
-          {
-            "last_modified_ledger_seq": 0,
-            "data": {
-              "contract_data": {
-                "ext": "v0",
-                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-                "key": {
-                  "vec": [
-                    {
-                      "symbol": "UserClaimedPlans"
-                    },
-                    {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                    }
-                  ]
-                },
-                "durability": "persistent",
-                "val": {
-                  "vec": [
-                    {
-                      "u64": 1
-                    },
-                    {
-                      "u64": 2
                     }
                   ]
                 }
@@ -1025,9 +600,6 @@
                   "vec": [
                     {
                       "u64": 1
-                    },
-                    {
-                      "u64": 2
                     }
                   ]
                 }
@@ -1082,7 +654,7 @@
                           ]
                         },
                         "val": {
-                          "u64": 3
+                          "u64": 2
                         }
                       }
                     ]
@@ -1132,7 +704,7 @@
                         "val": {
                           "i128": {
                             "hi": 0,
-                            "lo": 2940
+                            "lo": 98000
                           }
                         }
                       },
@@ -1150,7 +722,7 @@
                         "val": {
                           "i128": {
                             "hi": 0,
-                            "lo": 60
+                            "lo": 2000
                           }
                         }
                       },
@@ -1168,7 +740,7 @@
                         "val": {
                           "i128": {
                             "hi": 0,
-                            "lo": 9997000
+                            "lo": 9900000
                           }
                         }
                       }
@@ -1218,7 +790,7 @@
       [
         {
           "contract_data": {
-            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
             "key": {
               "ledger_key_nonce": {
                 "nonce": 1033654523790656264
@@ -1233,7 +805,7 @@
             "data": {
               "contract_data": {
                 "ext": "v0",
-                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
                 "key": {
                   "ledger_key_nonce": {
                     "nonce": 1033654523790656264
@@ -1251,7 +823,40 @@
       [
         {
           "contract_data": {
-            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+            "key": {
+              "ledger_key_nonce": {
+                "nonce": 2032731177588607455
+              }
+            },
+            "durability": "temporary"
+          }
+        },
+        [
+          {
+            "last_modified_ledger_seq": 0,
+            "data": {
+              "contract_data": {
+                "ext": "v0",
+                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+                "key": {
+                  "ledger_key_nonce": {
+                    "nonce": 2032731177588607455
+                  }
+                },
+                "durability": "temporary",
+                "val": "void"
+              }
+            },
+            "ext": "v0"
+          },
+          6311999
+        ]
+      ],
+      [
+        {
+          "contract_data": {
+            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
             "key": {
               "ledger_key_nonce": {
                 "nonce": 4837995959683129791
@@ -1266,7 +871,7 @@
             "data": {
               "contract_data": {
                 "ext": "v0",
-                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
                 "key": {
                   "ledger_key_nonce": {
                     "nonce": 4837995959683129791
@@ -1480,7 +1085,7 @@
                             "u32": 123456
                           },
                           {
-                            "bytes": "31313131"
+                            "bytes": "31313131313131313131313131313131"
                           },
                           {
                             "u32": 10000
@@ -1495,7 +1100,7 @@
                     "symbol": "description"
                   },
                   "val": {
-                    "string": "Plan"
+                    "string": "My will"
                   }
                 },
                 {
@@ -1531,7 +1136,7 @@
                     "symbol": "plan_name"
                   },
                   "val": {
-                    "string": "Will 1"
+                    "string": "Will"
                   }
                 },
                 {
@@ -1547,7 +1152,7 @@
                     "symbol": "total_amount"
                   },
                   "val": {
-                    "u64": 1000
+                    "u64": 100000
                   }
                 }
               ]
@@ -1638,7 +1243,7 @@
                 {
                   "i128": {
                     "hi": 0,
-                    "lo": 20
+                    "lo": 2000
                   }
                 }
               ]
@@ -1698,7 +1303,7 @@
                 {
                   "i128": {
                     "hi": 0,
-                    "lo": 980
+                    "lo": 98000
                   }
                 }
               ]
@@ -1794,33 +1399,89 @@
                 "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
               },
               {
-                "symbol": "create_inheritance_plan"
+                "symbol": "get_plan_details"
+              }
+            ],
+            "data": {
+              "u64": 1
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "get_plan_details"
               }
             ],
             "data": {
               "map": [
                 {
                   "key": {
-                    "symbol": "beneficiaries_data"
+                    "symbol": "asset_type"
+                  },
+                  "val": {
+                    "symbol": "USDC"
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "beneficiaries"
                   },
                   "val": {
                     "vec": [
                       {
-                        "vec": [
+                        "map": [
                           {
-                            "string": "Alice"
+                            "key": {
+                              "symbol": "allocation_bp"
+                            },
+                            "val": {
+                              "u32": 10000
+                            }
                           },
                           {
-                            "string": "alice@example.com"
+                            "key": {
+                              "symbol": "bank_account"
+                            },
+                            "val": {
+                              "bytes": "31313131313131313131313131313131"
+                            }
                           },
                           {
-                            "u32": 123456
+                            "key": {
+                              "symbol": "hashed_claim_code"
+                            },
+                            "val": {
+                              "bytes": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
+                            }
                           },
                           {
-                            "bytes": "31313131"
+                            "key": {
+                              "symbol": "hashed_email"
+                            },
+                            "val": {
+                              "bytes": "3e5718fea51a8f3f5baca61c77afab473c1810f8b9db330273b4011ce92c787e"
+                            }
                           },
                           {
-                            "u32": 10000
+                            "key": {
+                              "symbol": "hashed_full_name"
+                            },
+                            "val": {
+                              "bytes": "08bb5e5d6eaac1049ede0893d30ed022b1a4d9b5b48db414871f51c9cb35283d"
+                            }
                           }
                         ]
                       }
@@ -1829,10 +1490,18 @@
                 },
                 {
                   "key": {
+                    "symbol": "created_at"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "description"
                   },
                   "val": {
-                    "string": "Plan"
+                    "string": "My will"
                   }
                 },
                 {
@@ -1845,6 +1514,14 @@
                         "symbol": "LumpSum"
                       }
                     ]
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "is_active"
+                  },
+                  "val": {
+                    "bool": true
                   }
                 },
                 {
@@ -1868,15 +1545,15 @@
                     "symbol": "plan_name"
                   },
                   "val": {
-                    "string": "Will 2"
+                    "string": "Will"
                   }
                 },
                 {
                   "key": {
-                    "symbol": "token"
+                    "symbol": "total_allocation_bp"
                   },
                   "val": {
-                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
+                    "u32": 10000
                   }
                 },
                 {
@@ -1884,7 +1561,15 @@
                     "symbol": "total_amount"
                   },
                   "val": {
-                    "u64": 2000
+                    "u64": 98000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "total_loaned"
+                  },
+                  "val": {
+                    "u64": 0
                   }
                 }
               ]
@@ -1897,7 +1582,7 @@
     {
       "event": {
         "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "contract_id": null,
         "type_": "diagnostic",
         "body": {
           "v0": {
@@ -1906,244 +1591,19 @@
                 "symbol": "fn_call"
               },
               {
-                "bytes": "0000000000000000000000000000000000000000000000000000000000000002"
+                "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
               },
               {
-                "symbol": "balance"
-              }
-            ],
-            "data": {
-              "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-            }
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000002",
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "fn_return"
-              },
-              {
-                "symbol": "balance"
-              }
-            ],
-            "data": {
-              "i128": {
-                "hi": 0,
-                "lo": 9999000
-              }
-            }
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "fn_call"
-              },
-              {
-                "bytes": "0000000000000000000000000000000000000000000000000000000000000002"
-              },
-              {
-                "symbol": "transfer"
+                "symbol": "trigger_inheritance"
               }
             ],
             "data": {
               "vec": [
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
                 {
-                  "i128": {
-                    "hi": 0,
-                    "lo": 40
-                  }
-                }
-              ]
-            }
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000002",
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "fn_return"
-              },
-              {
-                "symbol": "transfer"
-              }
-            ],
-            "data": "void"
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "fn_call"
-              },
-              {
-                "bytes": "0000000000000000000000000000000000000000000000000000000000000002"
-              },
-              {
-                "symbol": "transfer"
-              }
-            ],
-            "data": {
-              "vec": [
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                },
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
-                },
-                {
-                  "i128": {
-                    "hi": 0,
-                    "lo": 1960
-                  }
-                }
-              ]
-            }
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000002",
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "fn_return"
-              },
-              {
-                "symbol": "transfer"
-              }
-            ],
-            "data": "void"
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "log"
-              }
-            ],
-            "data": {
-              "vec": [
-                {
-                  "string": "Inheritance plan created with ID: {}"
-                },
-                {
-                  "u64": 2
-                }
-              ]
-            }
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "fn_return"
-              },
-              {
-                "symbol": "create_inheritance_plan"
-              }
-            ],
-            "data": {
-              "u64": 2
-            }
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": null,
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "fn_call"
-              },
-              {
-                "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
-              },
-              {
-                "symbol": "claim_inheritance_plan"
-              }
-            ],
-            "data": {
-              "vec": [
-                {
                   "u64": 1
-                },
-                {
-                  "string": "alice@example.com"
-                },
-                {
-                  "u32": 123456
                 }
               ]
             }
@@ -2161,109 +1621,37 @@
           "v0": {
             "topics": [
               {
-                "symbol": "CLAIM"
+                "symbol": "INHERIT"
               },
               {
-                "symbol": "SUCCESS"
+                "symbol": "TRIGGER"
               }
             ],
             "data": {
-              "vec": [
+              "map": [
                 {
-                  "u64": 1
+                  "key": {
+                    "symbol": "outstanding_loans"
+                  },
+                  "val": {
+                    "u64": 50000
+                  }
                 },
                 {
-                  "bytes": "3e5718fea51a8f3f5baca61c77afab473c1810f8b9db330273b4011ce92c787e"
+                  "key": {
+                    "symbol": "plan_id"
+                  },
+                  "val": {
+                    "u64": 1
+                  }
                 },
                 {
-                  "u64": 980
-                }
-              ]
-            }
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "log"
-              }
-            ],
-            "data": {
-              "vec": [
-                {
-                  "string": "Inheritance claimed for plan {} by {}"
-                },
-                {
-                  "u64": 1
-                },
-                {
-                  "string": "alice@example.com"
-                }
-              ]
-            }
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "fn_return"
-              },
-              {
-                "symbol": "claim_inheritance_plan"
-              }
-            ],
-            "data": "void"
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": null,
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "fn_call"
-              },
-              {
-                "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
-              },
-              {
-                "symbol": "claim_inheritance_plan"
-              }
-            ],
-            "data": {
-              "vec": [
-                {
-                  "u64": 2
-                },
-                {
-                  "string": "alice@example.com"
-                },
-                {
-                  "u32": 123456
+                  "key": {
+                    "symbol": "triggered_at"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
                 }
               ]
             }
@@ -2281,22 +1669,29 @@
           "v0": {
             "topics": [
               {
-                "symbol": "CLAIM"
+                "symbol": "LOAN"
               },
               {
-                "symbol": "SUCCESS"
+                "symbol": "FREEZE"
               }
             ],
             "data": {
-              "vec": [
+              "map": [
                 {
-                  "u64": 2
+                  "key": {
+                    "symbol": "frozen_at"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
                 },
                 {
-                  "bytes": "3e5718fea51a8f3f5baca61c77afab473c1810f8b9db330273b4011ce92c787e"
-                },
-                {
-                  "u64": 1960
+                  "key": {
+                    "symbol": "plan_id"
+                  },
+                  "val": {
+                    "u64": 1
+                  }
                 }
               ]
             }
@@ -2320,13 +1715,13 @@
             "data": {
               "vec": [
                 {
-                  "string": "Inheritance claimed for plan {} by {}"
+                  "string": "Inheritance triggered for plan {} \\xe2\\x80\\x94 loans frozen, outstanding: {}"
                 },
                 {
-                  "u64": 2
+                  "u64": 1
                 },
                 {
-                  "string": "alice@example.com"
+                  "u64": 50000
                 }
               ]
             }
@@ -2347,7 +1742,7 @@
                 "symbol": "fn_return"
               },
               {
-                "symbol": "claim_inheritance_plan"
+                "symbol": "trigger_inheritance"
               }
             ],
             "data": "void"
@@ -2371,11 +1766,102 @@
                 "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
               },
               {
-                "symbol": "get_user_claimed_plans"
+                "symbol": "recall_loan"
               }
             ],
             "data": {
-              "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+              "vec": [
+                {
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                },
+                {
+                  "u64": 1
+                },
+                {
+                  "u64": 30000
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "contract",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "LOAN"
+              },
+              {
+                "symbol": "RECALL"
+              }
+            ],
+            "data": {
+              "map": [
+                {
+                  "key": {
+                    "symbol": "plan_id"
+                  },
+                  "val": {
+                    "u64": 1
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "recalled_amount"
+                  },
+                  "val": {
+                    "u64": 30000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "remaining_loaned"
+                  },
+                  "val": {
+                    "u64": 20000
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "log"
+              }
+            ],
+            "data": {
+              "vec": [
+                {
+                  "string": "Recalled {} from plan {} loans \\xe2\\x80\\x94 {} remaining"
+                },
+                {
+                  "u64": 30000
+                },
+                {
+                  "u64": 1
+                },
+                {
+                  "u64": 20000
+                }
+              ]
             }
           }
         }
@@ -2394,308 +1880,747 @@
                 "symbol": "fn_return"
               },
               {
-                "symbol": "get_user_claimed_plans"
+                "symbol": "recall_loan"
+              }
+            ],
+            "data": "void"
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": null,
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_call"
+              },
+              {
+                "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
+              },
+              {
+                "symbol": "get_plan_details"
+              }
+            ],
+            "data": {
+              "u64": 1
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "get_plan_details"
+              }
+            ],
+            "data": {
+              "map": [
+                {
+                  "key": {
+                    "symbol": "asset_type"
+                  },
+                  "val": {
+                    "symbol": "USDC"
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "beneficiaries"
+                  },
+                  "val": {
+                    "vec": [
+                      {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "allocation_bp"
+                            },
+                            "val": {
+                              "u32": 10000
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "bank_account"
+                            },
+                            "val": {
+                              "bytes": "31313131313131313131313131313131"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "hashed_claim_code"
+                            },
+                            "val": {
+                              "bytes": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "hashed_email"
+                            },
+                            "val": {
+                              "bytes": "3e5718fea51a8f3f5baca61c77afab473c1810f8b9db330273b4011ce92c787e"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "hashed_full_name"
+                            },
+                            "val": {
+                              "bytes": "08bb5e5d6eaac1049ede0893d30ed022b1a4d9b5b48db414871f51c9cb35283d"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "created_at"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "description"
+                  },
+                  "val": {
+                    "string": "My will"
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "distribution_method"
+                  },
+                  "val": {
+                    "vec": [
+                      {
+                        "symbol": "LumpSum"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "is_active"
+                  },
+                  "val": {
+                    "bool": true
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "is_lendable"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "owner"
+                  },
+                  "val": {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "plan_name"
+                  },
+                  "val": {
+                    "string": "Will"
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "total_allocation_bp"
+                  },
+                  "val": {
+                    "u32": 10000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "total_amount"
+                  },
+                  "val": {
+                    "u64": 98000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "total_loaned"
+                  },
+                  "val": {
+                    "u64": 20000
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": null,
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_call"
+              },
+              {
+                "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
+              },
+              {
+                "symbol": "get_inheritance_trigger"
+              }
+            ],
+            "data": {
+              "u64": 1
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "get_inheritance_trigger"
+              }
+            ],
+            "data": {
+              "map": [
+                {
+                  "key": {
+                    "symbol": "liquidation_triggered"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "loan_freeze_active"
+                  },
+                  "val": {
+                    "bool": true
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "original_loaned"
+                  },
+                  "val": {
+                    "u64": 50000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "recall_attempted"
+                  },
+                  "val": {
+                    "bool": true
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "recalled_amount"
+                  },
+                  "val": {
+                    "u64": 30000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "settled_amount"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "triggered_at"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": null,
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_call"
+              },
+              {
+                "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
+              },
+              {
+                "symbol": "recall_loan"
               }
             ],
             "data": {
               "vec": [
                 {
-                  "map": [
-                    {
-                      "key": {
-                        "symbol": "asset_type"
-                      },
-                      "val": {
-                        "symbol": "USDC"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "beneficiaries"
-                      },
-                      "val": {
-                        "vec": [
-                          {
-                            "map": [
-                              {
-                                "key": {
-                                  "symbol": "allocation_bp"
-                                },
-                                "val": {
-                                  "u32": 10000
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "bank_account"
-                                },
-                                "val": {
-                                  "bytes": "31313131"
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "hashed_claim_code"
-                                },
-                                "val": {
-                                  "bytes": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "hashed_email"
-                                },
-                                "val": {
-                                  "bytes": "3e5718fea51a8f3f5baca61c77afab473c1810f8b9db330273b4011ce92c787e"
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "hashed_full_name"
-                                },
-                                "val": {
-                                  "bytes": "08bb5e5d6eaac1049ede0893d30ed022b1a4d9b5b48db414871f51c9cb35283d"
-                                }
-                              }
-                            ]
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "created_at"
-                      },
-                      "val": {
-                        "u64": 0
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "description"
-                      },
-                      "val": {
-                        "string": "Plan"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "distribution_method"
-                      },
-                      "val": {
-                        "vec": [
-                          {
-                            "symbol": "LumpSum"
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "is_active"
-                      },
-                      "val": {
-                        "bool": true
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "is_lendable"
-                      },
-                      "val": {
-                        "bool": true
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "owner"
-                      },
-                      "val": {
-                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "plan_name"
-                      },
-                      "val": {
-                        "string": "Will 1"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "total_allocation_bp"
-                      },
-                      "val": {
-                        "u32": 10000
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "total_amount"
-                      },
-                      "val": {
-                        "u64": 0
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "total_loaned"
-                      },
-                      "val": {
-                        "u64": 0
-                      }
-                    }
-                  ]
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                 },
                 {
-                  "map": [
-                    {
-                      "key": {
-                        "symbol": "asset_type"
-                      },
-                      "val": {
-                        "symbol": "USDC"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "beneficiaries"
-                      },
-                      "val": {
-                        "vec": [
+                  "u64": 1
+                },
+                {
+                  "u64": 20000
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "contract",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "LOAN"
+              },
+              {
+                "symbol": "RECALL"
+              }
+            ],
+            "data": {
+              "map": [
+                {
+                  "key": {
+                    "symbol": "plan_id"
+                  },
+                  "val": {
+                    "u64": 1
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "recalled_amount"
+                  },
+                  "val": {
+                    "u64": 20000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "remaining_loaned"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "log"
+              }
+            ],
+            "data": {
+              "vec": [
+                {
+                  "string": "Recalled {} from plan {} loans \\xe2\\x80\\x94 {} remaining"
+                },
+                {
+                  "u64": 20000
+                },
+                {
+                  "u64": 1
+                },
+                {
+                  "u64": 0
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "recall_loan"
+              }
+            ],
+            "data": "void"
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": null,
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_call"
+              },
+              {
+                "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
+              },
+              {
+                "symbol": "get_plan_details"
+              }
+            ],
+            "data": {
+              "u64": 1
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "get_plan_details"
+              }
+            ],
+            "data": {
+              "map": [
+                {
+                  "key": {
+                    "symbol": "asset_type"
+                  },
+                  "val": {
+                    "symbol": "USDC"
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "beneficiaries"
+                  },
+                  "val": {
+                    "vec": [
+                      {
+                        "map": [
                           {
-                            "map": [
-                              {
-                                "key": {
-                                  "symbol": "allocation_bp"
-                                },
-                                "val": {
-                                  "u32": 10000
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "bank_account"
-                                },
-                                "val": {
-                                  "bytes": "31313131"
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "hashed_claim_code"
-                                },
-                                "val": {
-                                  "bytes": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "hashed_email"
-                                },
-                                "val": {
-                                  "bytes": "3e5718fea51a8f3f5baca61c77afab473c1810f8b9db330273b4011ce92c787e"
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "hashed_full_name"
-                                },
-                                "val": {
-                                  "bytes": "08bb5e5d6eaac1049ede0893d30ed022b1a4d9b5b48db414871f51c9cb35283d"
-                                }
-                              }
-                            ]
+                            "key": {
+                              "symbol": "allocation_bp"
+                            },
+                            "val": {
+                              "u32": 10000
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "bank_account"
+                            },
+                            "val": {
+                              "bytes": "31313131313131313131313131313131"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "hashed_claim_code"
+                            },
+                            "val": {
+                              "bytes": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "hashed_email"
+                            },
+                            "val": {
+                              "bytes": "3e5718fea51a8f3f5baca61c77afab473c1810f8b9db330273b4011ce92c787e"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "hashed_full_name"
+                            },
+                            "val": {
+                              "bytes": "08bb5e5d6eaac1049ede0893d30ed022b1a4d9b5b48db414871f51c9cb35283d"
+                            }
                           }
                         ]
                       }
-                    },
-                    {
-                      "key": {
-                        "symbol": "created_at"
-                      },
-                      "val": {
-                        "u64": 0
+                    ]
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "created_at"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "description"
+                  },
+                  "val": {
+                    "string": "My will"
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "distribution_method"
+                  },
+                  "val": {
+                    "vec": [
+                      {
+                        "symbol": "LumpSum"
                       }
-                    },
-                    {
-                      "key": {
-                        "symbol": "description"
-                      },
-                      "val": {
-                        "string": "Plan"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "distribution_method"
-                      },
-                      "val": {
-                        "vec": [
-                          {
-                            "symbol": "LumpSum"
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "is_active"
-                      },
-                      "val": {
-                        "bool": true
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "is_lendable"
-                      },
-                      "val": {
-                        "bool": true
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "owner"
-                      },
-                      "val": {
-                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "plan_name"
-                      },
-                      "val": {
-                        "string": "Will 2"
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "total_allocation_bp"
-                      },
-                      "val": {
-                        "u32": 10000
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "total_amount"
-                      },
-                      "val": {
-                        "u64": 0
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "total_loaned"
-                      },
-                      "val": {
-                        "u64": 0
-                      }
-                    }
-                  ]
+                    ]
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "is_active"
+                  },
+                  "val": {
+                    "bool": true
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "is_lendable"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "owner"
+                  },
+                  "val": {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "plan_name"
+                  },
+                  "val": {
+                    "string": "Will"
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "total_allocation_bp"
+                  },
+                  "val": {
+                    "u32": 10000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "total_amount"
+                  },
+                  "val": {
+                    "u64": 98000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "total_loaned"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": null,
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_call"
+              },
+              {
+                "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
+              },
+              {
+                "symbol": "get_inheritance_trigger"
+              }
+            ],
+            "data": {
+              "u64": 1
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "diagnostic",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "get_inheritance_trigger"
+              }
+            ],
+            "data": {
+              "map": [
+                {
+                  "key": {
+                    "symbol": "liquidation_triggered"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "loan_freeze_active"
+                  },
+                  "val": {
+                    "bool": true
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "original_loaned"
+                  },
+                  "val": {
+                    "u64": 50000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "recall_attempted"
+                  },
+                  "val": {
+                    "bool": true
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "recalled_amount"
+                  },
+                  "val": {
+                    "u64": 50000
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "settled_amount"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "triggered_at"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
                 }
               ]
             }

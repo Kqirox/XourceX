@@ -53,7 +53,7 @@
                                 "u32": 123456
                               },
                               {
-                                "bytes": "31313131"
+                                "bytes": "31313131313131313131313131313131"
                               },
                               {
                                 "u32": 10000
@@ -68,7 +68,7 @@
                         "symbol": "description"
                       },
                       "val": {
-                        "string": "Inheritance Plan"
+                        "string": "My will"
                       }
                     },
                     {
@@ -120,7 +120,7 @@
                         "symbol": "total_amount"
                       },
                       "val": {
-                        "u64": 1000
+                        "u64": 100000
                       }
                     }
                   ]
@@ -144,7 +144,7 @@
                     {
                       "i128": {
                         "hi": 0,
-                        "lo": 20
+                        "lo": 2000
                       }
                     }
                   ]
@@ -167,7 +167,7 @@
                     {
                       "i128": {
                         "hi": 0,
-                        "lo": 980
+                        "lo": 98000
                       }
                     }
                   ]
@@ -179,7 +179,28 @@
         }
       ]
     ],
-    [],
+    [
+      [
+        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+        {
+          "function": {
+            "contract_fn": {
+              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "function_name": "trigger_inheritance",
+              "args": [
+                {
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                },
+                {
+                  "u64": 1
+                }
+              ]
+            }
+          },
+          "sub_invocations": []
+        }
+      ]
+    ],
     []
   ],
   "ledger": {
@@ -199,7 +220,10 @@
             "key": {
               "vec": [
                 {
-                  "symbol": "AllClaimedPlans"
+                  "symbol": "InheritanceTrigger"
+                },
+                {
+                  "u64": 1
                 }
               ]
             },
@@ -216,56 +240,10 @@
                 "key": {
                   "vec": [
                     {
-                      "symbol": "AllClaimedPlans"
-                    }
-                  ]
-                },
-                "durability": "persistent",
-                "val": {
-                  "vec": [
-                    {
-                      "u64": 1
-                    }
-                  ]
-                }
-              }
-            },
-            "ext": "v0"
-          },
-          4095
-        ]
-      ],
-      [
-        {
-          "contract_data": {
-            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-            "key": {
-              "vec": [
-                {
-                  "symbol": "Claim"
-                },
-                {
-                  "bytes": "8a2ee6846fc61f805ff5a316f4bc438e000ccc886f674705e797a101ea3ccff7"
-                }
-              ]
-            },
-            "durability": "persistent"
-          }
-        },
-        [
-          {
-            "last_modified_ledger_seq": 0,
-            "data": {
-              "contract_data": {
-                "ext": "v0",
-                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-                "key": {
-                  "vec": [
-                    {
-                      "symbol": "Claim"
+                      "symbol": "InheritanceTrigger"
                     },
                     {
-                      "bytes": "8a2ee6846fc61f805ff5a316f4bc438e000ccc886f674705e797a101ea3ccff7"
+                      "u64": 1
                     }
                   ]
                 },
@@ -274,15 +252,23 @@
                   "map": [
                     {
                       "key": {
-                        "symbol": "beneficiary_index"
+                        "symbol": "liquidation_triggered"
                       },
                       "val": {
-                        "u32": 0
+                        "bool": false
                       }
                     },
                     {
                       "key": {
-                        "symbol": "claimed_at"
+                        "symbol": "loan_freeze_active"
+                      },
+                      "val": {
+                        "bool": true
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "original_loaned"
                       },
                       "val": {
                         "u64": 0
@@ -290,10 +276,34 @@
                     },
                     {
                       "key": {
-                        "symbol": "plan_id"
+                        "symbol": "recall_attempted"
                       },
                       "val": {
-                        "u64": 1
+                        "bool": false
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "recalled_amount"
+                      },
+                      "val": {
+                        "u64": 0
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "settled_amount"
+                      },
+                      "val": {
+                        "u64": 0
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "triggered_at"
+                      },
+                      "val": {
+                        "u64": 0
                       }
                     }
                   ]
@@ -371,7 +381,7 @@
                                   "symbol": "bank_account"
                                 },
                                 "val": {
-                                  "bytes": "31313131"
+                                  "bytes": "31313131313131313131313131313131"
                                 }
                               },
                               {
@@ -416,7 +426,7 @@
                         "symbol": "description"
                       },
                       "val": {
-                        "string": "Inheritance Plan"
+                        "string": "My will"
                       }
                     },
                     {
@@ -444,7 +454,7 @@
                         "symbol": "is_lendable"
                       },
                       "val": {
-                        "bool": true
+                        "bool": false
                       }
                     },
                     {
@@ -476,7 +486,7 @@
                         "symbol": "total_amount"
                       },
                       "val": {
-                        "u64": 0
+                        "u64": 98000
                       }
                     },
                     {
@@ -486,55 +496,6 @@
                       "val": {
                         "u64": 0
                       }
-                    }
-                  ]
-                }
-              }
-            },
-            "ext": "v0"
-          },
-          4095
-        ]
-      ],
-      [
-        {
-          "contract_data": {
-            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-            "key": {
-              "vec": [
-                {
-                  "symbol": "UserClaimedPlans"
-                },
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                }
-              ]
-            },
-            "durability": "persistent"
-          }
-        },
-        [
-          {
-            "last_modified_ledger_seq": 0,
-            "data": {
-              "contract_data": {
-                "ext": "v0",
-                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-                "key": {
-                  "vec": [
-                    {
-                      "symbol": "UserClaimedPlans"
-                    },
-                    {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                    }
-                  ]
-                },
-                "durability": "persistent",
-                "val": {
-                  "vec": [
-                    {
-                      "u64": 1
                     }
                   ]
                 }
@@ -688,7 +649,7 @@
                         "val": {
                           "i128": {
                             "hi": 0,
-                            "lo": 980
+                            "lo": 98000
                           }
                         }
                       },
@@ -706,7 +667,7 @@
                         "val": {
                           "i128": {
                             "hi": 0,
-                            "lo": 20
+                            "lo": 2000
                           }
                         }
                       },
@@ -724,7 +685,7 @@
                         "val": {
                           "i128": {
                             "hi": 0,
-                            "lo": 9999000
+                            "lo": 9900000
                           }
                         }
                       }
@@ -760,6 +721,39 @@
                 "key": {
                   "ledger_key_nonce": {
                     "nonce": 801925984706572462
+                  }
+                },
+                "durability": "temporary",
+                "val": "void"
+              }
+            },
+            "ext": "v0"
+          },
+          6311999
+        ]
+      ],
+      [
+        {
+          "contract_data": {
+            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+            "key": {
+              "ledger_key_nonce": {
+                "nonce": 1033654523790656264
+              }
+            },
+            "durability": "temporary"
+          }
+        },
+        [
+          {
+            "last_modified_ledger_seq": 0,
+            "data": {
+              "contract_data": {
+                "ext": "v0",
+                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+                "key": {
+                  "ledger_key_nonce": {
+                    "nonce": 1033654523790656264
                   }
                 },
                 "durability": "temporary",
@@ -970,7 +964,7 @@
                             "u32": 123456
                           },
                           {
-                            "bytes": "31313131"
+                            "bytes": "31313131313131313131313131313131"
                           },
                           {
                             "u32": 10000
@@ -985,7 +979,7 @@
                     "symbol": "description"
                   },
                   "val": {
-                    "string": "Inheritance Plan"
+                    "string": "My will"
                   }
                 },
                 {
@@ -1037,7 +1031,7 @@
                     "symbol": "total_amount"
                   },
                   "val": {
-                    "u64": 1000
+                    "u64": 100000
                   }
                 }
               ]
@@ -1128,7 +1122,7 @@
                 {
                   "i128": {
                     "hi": 0,
-                    "lo": 20
+                    "lo": 2000
                   }
                 }
               ]
@@ -1188,7 +1182,7 @@
                 {
                   "i128": {
                     "hi": 0,
-                    "lo": 980
+                    "lo": 98000
                   }
                 }
               ]
@@ -1284,19 +1278,16 @@
                 "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
               },
               {
-                "symbol": "claim_inheritance_plan"
+                "symbol": "trigger_inheritance"
               }
             ],
             "data": {
               "vec": [
                 {
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                },
+                {
                   "u64": 1
-                },
-                {
-                  "string": "alice@example.com"
-                },
-                {
-                  "u32": 123456
                 }
               ]
             }
@@ -1314,22 +1305,77 @@
           "v0": {
             "topics": [
               {
-                "symbol": "CLAIM"
+                "symbol": "INHERIT"
               },
               {
-                "symbol": "SUCCESS"
+                "symbol": "TRIGGER"
               }
             ],
             "data": {
-              "vec": [
+              "map": [
                 {
-                  "u64": 1
+                  "key": {
+                    "symbol": "outstanding_loans"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
                 },
                 {
-                  "bytes": "3e5718fea51a8f3f5baca61c77afab473c1810f8b9db330273b4011ce92c787e"
+                  "key": {
+                    "symbol": "plan_id"
+                  },
+                  "val": {
+                    "u64": 1
+                  }
                 },
                 {
-                  "u64": 980
+                  "key": {
+                    "symbol": "triggered_at"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "0000000000000000000000000000000000000000000000000000000000000001",
+        "type_": "contract",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "LOAN"
+              },
+              {
+                "symbol": "FREEZE"
+              }
+            ],
+            "data": {
+              "map": [
+                {
+                  "key": {
+                    "symbol": "frozen_at"
+                  },
+                  "val": {
+                    "u64": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "plan_id"
+                  },
+                  "val": {
+                    "u64": 1
+                  }
                 }
               ]
             }
@@ -1353,13 +1399,13 @@
             "data": {
               "vec": [
                 {
-                  "string": "Inheritance claimed for plan {} by {}"
+                  "string": "Inheritance triggered for plan {} \\xe2\\x80\\x94 loans frozen, outstanding: {}"
                 },
                 {
                   "u64": 1
                 },
                 {
-                  "string": "alice@example.com"
+                  "u64": 0
                 }
               ]
             }
@@ -1380,7 +1426,7 @@
                 "symbol": "fn_return"
               },
               {
-                "symbol": "claim_inheritance_plan"
+                "symbol": "trigger_inheritance"
               }
             ],
             "data": "void"
@@ -1404,19 +1450,16 @@
                 "bytes": "0000000000000000000000000000000000000000000000000000000000000001"
               },
               {
-                "symbol": "claim_inheritance_plan"
+                "symbol": "liquidation_fallback"
               }
             ],
             "data": {
               "vec": [
                 {
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                },
+                {
                   "u64": 1
-                },
-                {
-                  "string": "alice@example.com"
-                },
-                {
-                  "u32": 123456
                 }
               ]
             }
@@ -1437,12 +1480,12 @@
                 "symbol": "fn_return"
               },
               {
-                "symbol": "claim_inheritance_plan"
+                "symbol": "liquidation_fallback"
               }
             ],
             "data": {
               "error": {
-                "contract": 16
+                "contract": 35
               }
             }
           }
@@ -1463,7 +1506,7 @@
               },
               {
                 "error": {
-                  "contract": 16
+                  "contract": 35
                 }
               }
             ],
@@ -1488,57 +1531,29 @@
               },
               {
                 "error": {
-                  "contract": 16
+                  "contract": 35
                 }
               }
             ],
             "data": {
               "vec": [
                 {
-                  "string": "contract call failed"
+                  "string": "contract try_call failed"
                 },
                 {
-                  "symbol": "claim_inheritance_plan"
+                  "symbol": "liquidation_fallback"
                 },
                 {
                   "vec": [
                     {
+                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                    },
+                    {
                       "u64": 1
-                    },
-                    {
-                      "string": "alice@example.com"
-                    },
-                    {
-                      "u32": 123456
                     }
                   ]
                 }
               ]
-            }
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": null,
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "error"
-              },
-              {
-                "error": {
-                  "contract": 16
-                }
-              }
-            ],
-            "data": {
-              "string": "escalating error to panic"
             }
           }
         }
