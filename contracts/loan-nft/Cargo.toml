@@ -1,16 +1,14 @@
 [package]
-name = "lending-contract"
-version = "0.0.0"
+name = "loan-nft"
+version = "0.1.0"
 edition = "2021"
 publish = false
 
 [lib]
-crate-type = ["cdylib"]
-doctest = false
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
-loan-nft = { path = "../loan-nft" }

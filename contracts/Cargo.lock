@@ -680,6 +680,7 @@ dependencies = [
 name = "lending-contract"
 version = "0.0.0"
 dependencies = [
+ "loan-nft",
  "soroban-sdk",
 ]
 
@@ -694,6 +695,13 @@ name = "libm"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
+
+[[package]]
+name = "loan-nft"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
 
 [[package]]
 name = "log"
