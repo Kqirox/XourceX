@@ -1015,17 +1015,29 @@ impl InheritanceContract {
 
     pub fn deposit(
         env: Env,
-        owner: Address,
+        caller: Address,
         token: Address,
         plan_id: u64,
         amount: u64,
     ) -> Result<(), InheritanceError> {
-        owner.require_auth();
+        caller.require_auth();
         if amount == 0 {
             return Err(InheritanceError::InvalidTotalAmount);
         }
+
         let mut plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
-        if plan.owner != owner {
+
+        // Authorization check: owner or active emergency contact
+        let mut is_authorized = plan.owner == caller;
+        if !is_authorized {
+            if let Some(record) = Self::get_emergency_access(env.clone(), plan_id) {
+                if record.trusted_contact == caller {
+                    is_authorized = true;
+                }
+            }
+        }
+
+        if !is_authorized {
             return Err(InheritanceError::Unauthorized);
         }
         if !plan.is_active {
@@ -1033,7 +1045,7 @@ impl InheritanceContract {
         }
 
         let token_client = token::Client::new(&env, &token);
-        let balance = token_client.balance(&owner);
+        let balance = token_client.balance(&caller);
         let required = amount as i128;
         if balance < required {
             return Err(InheritanceError::InsufficientBalance);
@@ -1042,7 +1054,7 @@ impl InheritanceContract {
         let contract_id = env.current_contract_address();
         let args: Vec<Val> = vec![
             &env,
-            owner.clone().into_val(&env),
+            caller.clone().into_val(&env),
             contract_id.clone().into_val(&env),
             required.into_val(&env),
         ];
@@ -1065,17 +1077,28 @@ impl InheritanceContract {
 
     pub fn withdraw(
         env: Env,
-        owner: Address,
+        caller: Address,
         token: Address,
         plan_id: u64,
         amount: u64,
     ) -> Result<(), InheritanceError> {
-        owner.require_auth();
+        caller.require_auth();
         if amount == 0 {
             return Err(InheritanceError::InvalidTotalAmount);
         }
         let mut plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
-        if plan.owner != owner {
+
+        // Authorization check: owner or active emergency contact
+        let mut is_authorized = plan.owner == caller;
+        if !is_authorized {
+            if let Some(record) = Self::get_emergency_access(env.clone(), plan_id) {
+                if record.trusted_contact == caller {
+                    is_authorized = true;
+                }
+            }
+        }
+
+        if !is_authorized {
             return Err(InheritanceError::Unauthorized);
         }
 
@@ -1089,7 +1112,7 @@ impl InheritanceContract {
         let args: Vec<Val> = vec![
             &env,
             contract_id.clone().into_val(&env),
-            owner.clone().into_val(&env),
+            caller.clone().into_val(&env),
             required.into_val(&env),
         ];
         let res =

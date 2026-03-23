@@ -2650,3 +2650,113 @@ fn test_emergency_access_expiration() {
         (symbol_short!("EMERG"), symbol_short!("EXPIR")).into_val(&env)
     );
 }
+
+#[test]
+fn test_emergency_withdrawal_success() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, token_id, _admin, user) = setup_with_token_and_admin(&env);
+    let trusted_contact = create_test_address(&env, 99);
+    let token_helper = TestTokenHelper::new(&env, &token_id);
+
+    let params = plan_params(
+        &env,
+        &user,
+        &token_id,
+        "Plan",
+        "Desc",
+        10000,
+        DistributionMethod::LumpSum,
+        &default_beneficiaries(&env),
+    );
+    client.create_inheritance_plan(&params);
+    let plan_id = 1u64;
+
+    // Plan owner deposits
+    client.deposit(&user, &token_id, &plan_id, &5000);
+    assert_eq!(token_helper.balance(&user), 10_000_000 - 10000 - 5000);
+
+    // Activate emergency access
+    client.activate_emergency_access(&user, &plan_id, &trusted_contact);
+
+    // Trusted contact withdraws
+    client.withdraw(&trusted_contact, &token_id, &plan_id, &2000);
+
+    // Verify balance
+    assert_eq!(token_helper.balance(&trusted_contact), 2000);
+    let plan = client.get_plan_details(&plan_id).unwrap();
+    // Initial 9800 (10000 - 2% fee) + 5000 (deposit) - 2000 (withdraw) = 12800
+    assert_eq!(plan.total_amount, 12800);
+}
+
+#[test]
+fn test_emergency_withdrawal_fails_after_expiration() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, token_id, _admin, user) = setup_with_token_and_admin(&env);
+    let trusted_contact = create_test_address(&env, 99);
+
+    let params = plan_params(
+        &env,
+        &user,
+        &token_id,
+        "Plan",
+        "Desc",
+        10000,
+        DistributionMethod::LumpSum,
+        &default_beneficiaries(&env),
+    );
+    client.create_inheritance_plan(&params);
+    let plan_id = 1u64;
+
+    client.deposit(&user, &token_id, &plan_id, &5000);
+
+    // Activate
+    client.activate_emergency_access(&user, &plan_id, &trusted_contact);
+
+    // Fast forward 7 days + 1s
+    env.ledger().set_timestamp(604801);
+
+    // Withdrawal should fail
+    let result = client.try_withdraw(&trusted_contact, &token_id, &plan_id, &2000);
+    assert!(result.is_err());
+    assert_eq!(result.err().unwrap(), Ok(InheritanceError::Unauthorized));
+
+    // Emergency record should be gone
+    assert!(client.get_emergency_access(&plan_id).is_none());
+}
+
+#[test]
+fn test_emergency_deposit_success() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, token_id, _admin, user) = setup_with_token_and_admin(&env);
+    let trusted_contact = create_test_address(&env, 99);
+    let token_helper = TestTokenHelper::new(&env, &token_id);
+    token_helper.mint(&trusted_contact, &1000);
+
+    let params = plan_params(
+        &env,
+        &user,
+        &token_id,
+        "Plan",
+        "Desc",
+        10000,
+        DistributionMethod::LumpSum,
+        &default_beneficiaries(&env),
+    );
+    client.create_inheritance_plan(&params);
+    let plan_id = 1u64;
+
+    // Activate
+    client.activate_emergency_access(&user, &plan_id, &trusted_contact);
+
+    // Trusted contact deposits
+    client.deposit(&trusted_contact, &token_id, &plan_id, &500);
+
+    // Verify
+    let plan = client.get_plan_details(&plan_id).unwrap();
+    // Initial 9800 (10000 - 2% fee) + 500 (deposit) = 10300
+    assert_eq!(plan.total_amount, 10300);
+    assert_eq!(token_helper.balance(&trusted_contact), 500);
+}
