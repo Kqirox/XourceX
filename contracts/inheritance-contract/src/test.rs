@@ -2846,3 +2846,49 @@ fn test_owner_trigger_inheritance_success() {
     let plan = client.get_plan_details(&plan_id).unwrap();
     assert!(!plan.is_lendable);
 }
+
+#[test]
+fn test_instant_revocation_by_owner() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, token_id, _admin, user) = setup_with_token_and_admin(&env);
+    let trusted_contact = create_test_address(&env, 99);
+
+    let params = plan_params(
+        &env,
+        &user,
+        &token_id,
+        "Plan",
+        "Desc",
+        10000,
+        DistributionMethod::LumpSum,
+        &default_beneficiaries(&env),
+    );
+    client.create_inheritance_plan(&params);
+    let plan_id = 1u64;
+
+    // 1. Activate emergency access
+    client.activate_emergency_access(&user, &plan_id, &trusted_contact);
+
+    // 2. Verify it's active
+    assert!(client.get_emergency_access(&plan_id).is_some());
+    let plan = client.get_user_plan(&trusted_contact, &plan_id);
+    assert_eq!(plan.owner, user);
+
+    // 3. Owner revokes instantly
+    client.deactivate_emergency_access(&user, &plan_id);
+
+    // 4. Verify it's gone and subsequent calls fail
+    assert!(client.get_emergency_access(&plan_id).is_none());
+    let result = client.try_get_user_plan(&trusted_contact, &plan_id);
+    assert!(result.is_err());
+    assert_eq!(result.err().unwrap(), Ok(InheritanceError::Unauthorized));
+
+    // 5. Verify withdrawals also fail
+    let withdraw_result = client.try_withdraw(&trusted_contact, &token_id, &plan_id, &100);
+    assert!(withdraw_result.is_err());
+    assert_eq!(
+        withdraw_result.err().unwrap(),
+        Ok(InheritanceError::Unauthorized)
+    );
+}
