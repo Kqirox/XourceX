@@ -15,6 +15,8 @@ pub mod notif_type {
     pub const PLAN_DEACTIVATED: &str = "plan_deactivated";
     pub const TWO_FA_SENT: &str = "2fa_sent";
     pub const LIQUIDATION_WARNING: &str = "liquidation_warning";
+    pub const REPAYMENT_REMINDER: &str = "repayment_reminder";
+    pub const YIELD_UPDATE: &str = "yield_update";
     pub const PLAN_PAUSED: &str = "plan_paused";
     pub const PLAN_UNPAUSED: &str = "plan_unpaused";
     pub const RISK_OVERRIDE_APPLIED: &str = "risk_override_applied";
@@ -178,6 +180,8 @@ pub mod audit_action {
     pub const EMERGENCY_ACCESS_GRANTED: &str = "emergency_access_granted";
     pub const EMERGENCY_ACCESS_REVOKED: &str = "emergency_access_revoked";
     pub const EMERGENCY_ACCESS_EXPIRED: &str = "emergency_access_expired";
+    pub const REPAYMENT_REMINDER_SENT: &str = "repayment_reminder_sent";
+    pub const YIELD_UPDATE_SENT: &str = "yield_update_sent";
 }
 
 /// Entity type constants — stored in `entity_type` column of `action_logs`.

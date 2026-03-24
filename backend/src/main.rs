@@ -53,10 +53,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
     interest_reconciliation.start();
 
-    // Initialize Emergency Access Background Job (Issue #293)
-    xourcex_backend::emergency_access_jobs::EmergencyAccessJobService::start(Arc::new(
-        db_pool.clone(),
-    ));
+    // Initialize Lending Notification Service
+    let lending_notification_service = std::sync::Arc::new(
+        xourcex_backend::LendingNotificationService::new(db_pool.clone()),
+    );
+    lending_notification_service.start();
 
     // Start server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
