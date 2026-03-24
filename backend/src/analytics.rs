@@ -3,7 +3,7 @@ use crate::app::AppState;
 use crate::auth::AuthenticatedAdmin;
 use crate::service::{
     AdminService, ClaimMetricsService, LendingMonitoringService, PlanStatisticsService,
-    RevenueMetricsService, UserMetricsService,
+    RevenueMetricsService, UserMetricsService, YieldReportFilters, YieldReportingService,
 };
 use axum::{
     extract::{Query, State},
@@ -13,6 +13,7 @@ use axum::{
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct RevenueRangeQuery {
@@ -20,8 +21,52 @@ pub struct RevenueRangeQuery {
     pub range: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YieldSummaryQuery {
+    pub asset_code: Option<String>,
+    pub user_id: Option<String>,
+    pub plan_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YieldHistoryQuery {
+    #[serde(default = "default_range")]
+    pub range: String,
+    pub asset_code: Option<String>,
+    pub user_id: Option<String>,
+    pub plan_id: Option<String>,
+}
+
 fn default_range() -> String {
-    "monthly".to_string()
+    "daily".to_string()
+}
+
+fn parse_uuid_filter(
+    raw_value: Option<String>,
+    field_name: &str,
+) -> Result<Option<Uuid>, ApiError> {
+    raw_value
+        .map(|value| {
+            Uuid::parse_str(value.trim())
+                .map_err(|error| ApiError::BadRequest(format!("Invalid {field_name}: {error}")))
+        })
+        .transpose()
+}
+
+fn build_yield_filters(
+    asset_code: Option<String>,
+    user_id: Option<String>,
+    plan_id: Option<String>,
+) -> Result<YieldReportFilters, ApiError> {
+    Ok(YieldReportFilters {
+        asset_code: asset_code
+            .map(|value| value.trim().to_uppercase())
+            .filter(|value| !value.is_empty()),
+        user_id: parse_uuid_filter(user_id, "userId")?,
+        plan_id: parse_uuid_filter(plan_id, "planId")?,
+    })
 }
 
 /// GET /api/admin/analytics/overview
@@ -109,6 +154,41 @@ async fn get_lending_metrics(
     })))
 }
 
+/// GET /api/admin/analytics/yield
+/// Returns vault yield and APY aggregated by asset-level vault.
+async fn get_yield_summary(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedAdmin(_admin): AuthenticatedAdmin,
+    Query(params): Query<YieldSummaryQuery>,
+) -> Result<Json<Value>, ApiError> {
+    let filters = build_yield_filters(params.asset_code, params.user_id, params.plan_id)?;
+    let summary =
+        YieldReportingService::get_yield_summary(&state.db, filters, state.yield_service.as_ref())
+            .await?;
+
+    Ok(Json(json!({
+        "status": "success",
+        "data": summary
+    })))
+}
+
+/// GET /api/admin/analytics/yield/history?range=daily|weekly|monthly
+/// Returns earnings history from realized interest accruals.
+async fn get_earnings_history(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedAdmin(_admin): AuthenticatedAdmin,
+    Query(params): Query<YieldHistoryQuery>,
+) -> Result<Json<Value>, ApiError> {
+    let filters = build_yield_filters(params.asset_code, params.user_id, params.plan_id)?;
+    let history =
+        YieldReportingService::get_earnings_history(&state.db, filters, &params.range).await?;
+
+    Ok(Json(json!({
+        "status": "success",
+        "data": history
+    })))
+}
+
 /// Aggregated dashboard endpoint — all metrics in one request.
 /// GET /api/admin/analytics/dashboard
 async fn get_dashboard(
@@ -141,8 +221,80 @@ async fn get_dashboard(
     })))
 }
 
+// ── Legacy Routes (for backwards compatibility) ────────────────────────────
+
+/// Legacy: GET /admin/metrics/overview
+/// Returns flat metrics object (no status wrapper)
+async fn get_overview_legacy(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedAdmin(_admin): AuthenticatedAdmin,
+) -> Result<Json<serde_json::Map<String, Value>>, ApiError> {
+    let metrics = AdminService::get_metrics_overview(&state.db).await?;
+    let mut map = serde_json::Map::new();
+    map.insert("totalRevenue".to_string(), json!(metrics.total_revenue));
+    map.insert("totalPlans".to_string(), json!(metrics.total_plans));
+    map.insert("totalClaims".to_string(), json!(metrics.total_claims));
+    map.insert("activePlans".to_string(), json!(metrics.active_plans));
+    map.insert("totalUsers".to_string(), json!(metrics.total_users));
+    Ok(Json(map))
+}
+
+/// Legacy: GET /admin/metrics/revenue?range=daily|weekly|monthly
+/// Returns revenue metrics with range field at root (no status wrapper)
+async fn get_revenue_metrics_legacy(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedAdmin(_admin): AuthenticatedAdmin,
+    Query(params): Query<RevenueRangeQuery>,
+) -> Result<Json<serde_json::Map<String, Value>>, ApiError> {
+    let breakdown = RevenueMetricsService::get_revenue_breakdown(&state.db, &params.range).await?;
+    let mut map = serde_json::Map::new();
+    map.insert("range".to_string(), json!(breakdown.range));
+    map.insert("data".to_string(), json!(breakdown.data));
+    Ok(Json(map))
+}
+
+/// Legacy: GET /admin/metrics/claims
+/// Returns claim metrics wrapped in status/data (for consistency with new endpoints)
+async fn get_claim_metrics_legacy(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedAdmin(_admin): AuthenticatedAdmin,
+) -> Result<Json<Value>, ApiError> {
+    let stats = ClaimMetricsService::get_claim_statistics(&state.db).await?;
+    Ok(Json(json!({
+        "status": "success",
+        "data": stats
+    })))
+}
+
+/// Legacy: GET /admin/metrics/users
+/// Returns user metrics wrapped in status/data (for consistency with new endpoints)
+async fn get_user_metrics_legacy(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedAdmin(_admin): AuthenticatedAdmin,
+) -> Result<Json<Value>, ApiError> {
+    let metrics = UserMetricsService::get_user_growth_metrics(&state.db).await?;
+    Ok(Json(json!({
+        "status": "success",
+        "data": metrics
+    })))
+}
+
+/// Legacy: GET /api/admin/metrics/plans
+/// Returns plan statistics wrapped in status/data (for consistency with new endpoints)
+async fn get_plan_metrics_legacy(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedAdmin(_admin): AuthenticatedAdmin,
+) -> Result<Json<Value>, ApiError> {
+    let stats = PlanStatisticsService::get_plan_statistics(&state.db).await?;
+    Ok(Json(json!({
+        "status": "success",
+        "data": stats
+    })))
+}
+
 pub fn analytics_router() -> Router<Arc<AppState>> {
     Router::new()
+        // New canonical API routes
         .route("/api/admin/analytics/dashboard", get(get_dashboard))
         .route("/api/admin/analytics/overview", get(get_overview))
         .route("/api/admin/analytics/users", get(get_user_metrics))
@@ -150,4 +302,15 @@ pub fn analytics_router() -> Router<Arc<AppState>> {
         .route("/api/admin/analytics/claims", get(get_claim_metrics))
         .route("/api/admin/analytics/revenue", get(get_revenue_metrics))
         .route("/api/admin/analytics/lending", get(get_lending_metrics))
+        .route("/api/admin/analytics/yield", get(get_yield_summary))
+        .route(
+            "/api/admin/analytics/yield/history",
+            get(get_earnings_history),
+        )
+        // Legacy routes (backwards compatibility)
+        .route("/admin/metrics/overview", get(get_overview_legacy))
+        .route("/admin/metrics/revenue", get(get_revenue_metrics_legacy))
+        .route("/admin/metrics/claims", get(get_claim_metrics_legacy))
+        .route("/admin/metrics/users", get(get_user_metrics_legacy))
+        .route("/api/admin/metrics/plans", get(get_plan_metrics_legacy))
 }
