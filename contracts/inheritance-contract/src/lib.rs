@@ -1121,6 +1121,18 @@ impl InheritanceContract {
             }
         }
 
+        // Emergency Guard: Limit withdrawal if emergency access was recently activated
+        if Self::is_emergency_active(&env, plan_id) {
+            let limit = (plan.total_amount as u128)
+                .checked_mul(EMERGENCY_TRANSFER_LIMIT_BP as u128)
+                .and_then(|v| v.checked_div(10000))
+                .unwrap_or(0) as u64;
+
+            if amount > limit {
+                return Err(InheritanceError::EmergencyCooldownActive);
+            }
+        }
+
         let available = plan.total_amount.saturating_sub(plan.total_loaned);
         if amount > available {
             return Err(InheritanceError::InsufficientLiquidity);
