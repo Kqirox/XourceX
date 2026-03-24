@@ -35,6 +35,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
     risk_engine.start();
 
+    let compliance_engine = std::sync::Arc::new(xourcex_backend::ComplianceEngine::new(
+        db_pool.clone(),
+        3,                                     // velocity threshold
+        10,                                    // velocity window mins
+        rust_decimal::Decimal::new(100000, 0), // $100k volume threshold
+    ));
+    compliance_engine.start();
+
     // Initialize Interest Reconciliation Service
     let yield_service = std::sync::Arc::new(xourcex_backend::DefaultOnChainYieldService::new());
     let interest_reconciliation =
