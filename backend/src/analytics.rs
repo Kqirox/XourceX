@@ -197,7 +197,8 @@ async fn get_emergency_access_metrics(
     AuthenticatedAdmin(_admin): AuthenticatedAdmin,
     Query(params): Query<RevenueRangeQuery>,
 ) -> Result<Json<Value>, ApiError> {
-    let metrics = EmergencyAccessMetricsService::get_metrics(&state.db, &params.range).await?;
+    let metrics: crate::service::EmergencyAccessMetrics =
+        EmergencyAccessMetricsService::get_metrics(&state.db, &params.range).await?;
     Ok(Json(json!({
         "status": "success",
         "data": metrics
