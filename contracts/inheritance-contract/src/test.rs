@@ -195,6 +195,7 @@ fn test_validate_plan_inputs() {
     let valid_amount = 1000000;
 
     let result = InheritanceContract::validate_plan_inputs(
+        &env,
         valid_name.clone(),
         valid_description.clone(),
         asset_type.clone(),
@@ -205,6 +206,7 @@ fn test_validate_plan_inputs() {
     // Test empty plan name
     let empty_name = String::from_str(&env, "");
     let result = InheritanceContract::validate_plan_inputs(
+        &env,
         empty_name,
         valid_description.clone(),
         asset_type.clone(),
@@ -217,8 +219,13 @@ fn test_validate_plan_inputs() {
     );
 
     // Test invalid amount
-    let result =
-        InheritanceContract::validate_plan_inputs(valid_name, valid_description, asset_type, 0);
+    let result = InheritanceContract::validate_plan_inputs(
+        &env,
+        valid_name,
+        valid_description,
+        asset_type,
+        0,
+    );
     assert!(result.is_err());
     assert_eq!(result.err().unwrap(), InheritanceError::InvalidTotalAmount);
 }
