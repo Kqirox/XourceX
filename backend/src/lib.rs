@@ -17,6 +17,7 @@ pub mod external_price_fetcher;
 pub mod governance;
 pub mod insurance_fund;
 pub mod interest_reconciliation;
+pub mod legacy_content;
 pub mod lending_notification_service;
 pub mod loan_lifecycle;
 pub mod message_access_audit;

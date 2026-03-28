@@ -76,6 +76,40 @@ impl TestContext {
     }
 }
 
+/// Create a test user and return their ID
+pub async fn create_test_user(pool: &PgPool, email: &str) -> sqlx::Result<uuid::Uuid> {
+    let user_id = uuid::Uuid::new_v4();
+    let wallet = format!("G{}", &user_id.to_string().replace("-", "")[..55]);
+
+    sqlx::query(
+        "INSERT INTO users (id, email, wallet_address, kyc_status) VALUES ($1, $2, $3, 'approved')"
+    )
+    .bind(user_id)
+    .bind(email)
+    .bind(wallet)
+    .execute(pool)
+    .await?;
+
+    Ok(user_id)
+}
+
+/// Create a test admin and return their ID
+pub async fn create_test_admin(pool: &PgPool, email: &str) -> sqlx::Result<uuid::Uuid> {
+    let admin_id = uuid::Uuid::new_v4();
+    let password_hash = bcrypt::hash("test_password", bcrypt::DEFAULT_COST).unwrap();
+
+    sqlx::query(
+        "INSERT INTO admins (id, email, password_hash, status) VALUES ($1, $2, $3, 'active')"
+    )
+    .bind(admin_id)
+    .bind(email)
+    .bind(password_hash)
+    .execute(pool)
+    .await?;
+
+    Ok(admin_id)
+}
+
 /// Helper function to create an admin user and get authentication token
 #[allow(dead_code)]
 pub async fn create_admin_and_get_token(ctx: &mut TestContext) -> String {
@@ -91,7 +125,7 @@ pub async fn create_admin_and_get_token(ctx: &mut TestContext) -> String {
         INSERT INTO admins (id, email, password_hash, role, status)
         VALUES ($1, $2, $3, 'super_admin', 'active')
         ON CONFLICT (id) DO UPDATE SET email = $2, password_hash = $3, role = 'super_admin', status = 'active'
-        "#
+        "#,
     )
     .bind(admin_id)
     .bind(&email)

@@ -21,6 +21,7 @@ use crate::governance::{
     CreateProposalRequest, GovernanceService, ParameterUpdateRequest, Proposal, VoteRequest,
 };
 use crate::insurance_fund::{CreateInsuranceClaimRequest, ProcessInsuranceClaimRequest};
+use crate::legacy_content::{ContentListFilters, LegacyContentService};
 use crate::loan_lifecycle::{CreateLoanRequest, LoanLifecycleService, LoanListFilters};
 use crate::message_access_audit::{
     MessageAccessAuditService, MessageAuditFilters,
@@ -468,6 +469,27 @@ pub async fn create_app(db: PgPool, config: Config) -> Result<Router, ApiError> 
             get(get_plan_audit_summary),
         )
         .route("/api/will/audit/my-activity", get(get_my_audit_activity))
+        // -- Legacy Content Upload (Issue #XXX) -------------------------------
+        .route(
+            "/api/content/upload",
+            post(upload_legacy_content),
+        )
+        .route(
+            "/api/content",
+            get(list_user_content),
+        )
+        .route(
+            "/api/content/:content_id",
+            get(get_content_by_id).delete(delete_content),
+        )
+        .route(
+            "/api/content/:content_id/download",
+            get(download_content),
+        )
+        .route(
+            "/api/content/stats",
+            get(get_storage_stats),
+        )
         .with_state(state);
 
     // Add price feed routes with separate state
@@ -2192,5 +2214,139 @@ async fn payout_insurance_claim(
     Ok(Json(json!({
         "status": "success",
         "message": "Claim paid out successfully"
+    })))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Legacy Content Handlers (Issue #XXX)
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[derive(serde::Deserialize)]
+pub struct UploadContentRequest {
+    pub original_filename: String,
+    pub content_type: String,
+    pub description: Option<String>,
+}
+
+/// User: Upload legacy content
+///
+/// `POST /api/content/upload`
+async fn upload_legacy_content(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedUser(user): AuthenticatedUser,
+    Json(req): Json<UploadContentRequest>,
+) -> Result<Json<Value>, ApiError> {
+    // Validate the content type
+    LegacyContentService::validate_content_type(&req.content_type)?;
+    
+    // For now, we'll create a metadata record. Full implementation would handle file upload.
+    let metadata = crate::legacy_content::UploadMetadata {
+        original_filename: req.original_filename,
+        content_type: req.content_type.clone(),
+        file_size: 0, // Would be set from actual file upload
+        description: req.description,
+    };
+    
+    let storage_path = LegacyContentService::generate_storage_path(user.user_id, &metadata.original_filename);
+    let file_hash = "pending".to_string(); // Would be calculated from file content
+    
+    let content = LegacyContentService::create_content_record(
+        &state.db,
+        user.user_id,
+        &metadata,
+        storage_path,
+        file_hash,
+    )
+    .await?;
+    
+    Ok(Json(json!({
+        "status": "success",
+        "data": content
+    })))
+}
+
+/// User: List legacy content
+///
+/// `GET /api/content?content_type_prefix=video&limit=50&offset=0`
+async fn list_user_content(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedUser(user): AuthenticatedUser,
+    Query(filters): Query<ContentListFilters>,
+) -> Result<Json<Value>, ApiError> {
+    let contents = LegacyContentService::list_user_content(&state.db, user.user_id, &filters).await?;
+    Ok(Json(json!({
+        "status": "success",
+        "data": contents,
+        "count": contents.len()
+    })))
+}
+
+/// User: Get content by ID
+///
+/// `GET /api/content/:content_id`
+async fn get_content_by_id(
+    State(state): State<Arc<AppState>>,
+    Path(content_id): Path<Uuid>,
+    AuthenticatedUser(user): AuthenticatedUser,
+) -> Result<Json<Value>, ApiError> {
+    let content = LegacyContentService::get_content_by_id(&state.db, content_id, user.user_id).await?;
+    Ok(Json(json!({
+        "status": "success",
+        "data": content
+    })))
+}
+
+/// User: Delete content (soft delete)
+///
+/// `DELETE /api/content/:content_id`
+async fn delete_content(
+    State(state): State<Arc<AppState>>,
+    Path(content_id): Path<Uuid>,
+    AuthenticatedUser(user): AuthenticatedUser,
+) -> Result<Json<Value>, ApiError> {
+    LegacyContentService::delete_content(&state.db, content_id, user.user_id).await?;
+    Ok(Json(json!({
+        "status": "success",
+        "message": "Content deleted successfully"
+    })))
+}
+
+/// User: Download content
+///
+/// `GET /api/content/:content_id/download`
+async fn download_content(
+    State(state): State<Arc<AppState>>,
+    Path(content_id): Path<Uuid>,
+    AuthenticatedUser(user): AuthenticatedUser,
+) -> Result<axum::response::Response, ApiError> {
+    let content = LegacyContentService::get_content_by_id(&state.db, content_id, user.user_id).await?;
+    
+    // In a full implementation, this would read from the FileStorageService
+    // For now, return a placeholder response
+    use axum::body::Body;
+    use axum::http::{header, Response, StatusCode};
+    
+    let content_disposition = format!("attachment; filename=\"{}\"", content.original_filename);
+    
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, &content.content_type)
+        .header(header::CONTENT_DISPOSITION, content_disposition)
+        .header(header::CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+        .body(Body::empty())
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to build response: {}", e)))
+}
+
+/// User: Get storage statistics
+///
+/// `GET /api/content/stats`
+async fn get_storage_stats(
+    State(state): State<Arc<AppState>>,
+    AuthenticatedUser(user): AuthenticatedUser,
+) -> Result<Json<Value>, ApiError> {
+    let stats = LegacyContentService::get_user_storage_stats(&state.db, user.user_id).await?;
+    Ok(Json(json!({
+        "status": "success",
+        "data": stats
     })))
 }
