@@ -1,7 +1,7 @@
 use crate::api_error::ApiError;
 use crate::app::AppState;
 use crate::config::Config;
-use crate::notifications::AuditLogService;
+use crate::notifications::{audit_action, entity_type, AuditLogService};
 use axum::{extract::State, Json};
 use bcrypt::verify;
 use chrono::{DateTime, Duration, Utc};
@@ -353,7 +353,7 @@ pub async fn send_2fa(
 
     // 3. Hash OTP
     let otp_hash = bcrypt::hash(&otp, bcrypt::DEFAULT_COST)
-        .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to hash OTP: {}", e)))?;
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to hash OTP: {e}")))?;
 
     let expires_at = Utc::now() + Duration::minutes(5);
 
@@ -385,9 +385,13 @@ pub async fn send_2fa(
     AuditLogService::log(
         &state.db,
         Some(payload.user_id),
-        "2fa_sent",
+        None,
+        audit_action::TWO_FA_SENT,
         Some(payload.user_id),
-        Some("user"),
+        Some(entity_type::USER),
+        None,
+        None,
+        None,
     )
     .await?;
 
@@ -435,7 +439,7 @@ pub async fn verify_2fa_internal(db: &PgPool, user_id: Uuid, otp: &str) -> Resul
 
     // 4. Verify OTP
     let valid = bcrypt::verify(otp, &otp_hash)
-        .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to verify OTP: {}", e)))?;
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to verify OTP: {e}")))?;
 
     if !valid {
         // Increment attempts

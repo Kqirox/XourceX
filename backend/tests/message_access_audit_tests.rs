@@ -61,10 +61,7 @@ fn test_message_access_log_serialization() {
     assert_eq!(json["user_id"], user_id.to_string());
     assert_eq!(json["message_id"], msg_id.to_string());
     assert_eq!(json["ip_address"], "10.0.0.1");
-    assert_eq!(
-        json["metadata"]["beneficiary_contact"],
-        "alice@example.com"
-    );
+    assert_eq!(json["metadata"]["beneficiary_contact"], "alice@example.com");
 }
 
 #[test]

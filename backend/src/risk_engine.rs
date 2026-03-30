@@ -77,7 +77,7 @@ impl RiskEngine {
         )
         .fetch_all(&self.db)
         .await
-        .map_err(|e| ApiError::Internal(anyhow::anyhow!("DB error loading loan balances: {}", e)))?;
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!("DB error loading loan balances: {e}")))?;
 
         for loan in loans_health {
             // Get prices for evaluation
@@ -133,7 +133,7 @@ impl RiskEngine {
                 .bind(loan.plan_id)
                 .execute(&self.db)
                 .await
-                .map_err(|e| ApiError::Internal(anyhow::anyhow!("DB error updating plan risk status: {}", e)))?;
+                .map_err(|e| ApiError::Internal(anyhow::anyhow!("DB error updating plan risk status: {e}")))?;
 
                 // Notify if transitioned to risky (and not overridden)
                 if is_now_risky && !loan.is_risky.unwrap_or(false) && !should_skip_risk_check {
@@ -142,9 +142,10 @@ impl RiskEngine {
                         loan.plan_id, loan.user_id, health_factor
                     );
 
-                    let mut tx = self.db.begin().await.map_err(|e| {
-                        ApiError::Internal(anyhow::anyhow!("Tx start error: {}", e))
-                    })?;
+                    let mut tx =
+                        self.db.begin().await.map_err(|e| {
+                            ApiError::Internal(anyhow::anyhow!("Tx start error: {e}"))
+                        })?;
 
                     NotificationService::create(
                         &mut tx,
@@ -156,15 +157,19 @@ impl RiskEngine {
                     AuditLogService::log(
                         &mut *tx,
                         Some(loan.user_id),
+                        None,
                         audit_action::LIQUIDATION_WARNING,
                         Some(loan.plan_id),
                         Some(entity_type::PLAN),
+                        None,
+                        None,
+                        None,
                     )
                     .await?;
 
-                    tx.commit().await.map_err(|e| {
-                        ApiError::Internal(anyhow::anyhow!("Tx commit error: {}", e))
-                    })?;
+                    tx.commit()
+                        .await
+                        .map_err(|e| ApiError::Internal(anyhow::anyhow!("Tx commit error: {e}")))?;
                 } else if !is_now_risky && loan.is_risky.unwrap_or(false) {
                     info!(
                         "Plan {} for User {} is no longer risky. HF: {}",

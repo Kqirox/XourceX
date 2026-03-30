@@ -23,9 +23,7 @@ use crate::governance::{
 use crate::insurance_fund::{CreateInsuranceClaimRequest, ProcessInsuranceClaimRequest};
 use crate::legacy_content::{ContentListFilters, LegacyContentService};
 use crate::loan_lifecycle::{CreateLoanRequest, LoanLifecycleService, LoanListFilters};
-use crate::message_access_audit::{
-    MessageAccessAuditService, MessageAuditFilters,
-};
+use crate::message_access_audit::{MessageAccessAuditService, MessageAuditFilters};
 use crate::secure_messages::{
     CreateLegacyMessageRequest, LegacyMessageDeliveryService, MessageEncryptionService,
     MessageKeyService,
@@ -146,10 +144,7 @@ pub async fn create_app(db: PgPool, config: Config) -> Result<Router, ApiError> 
             "/api/admin/messages/delivery/process",
             post(process_legacy_message_delivery),
         )
-        .route(
-            "/api/admin/messages/audit",
-            get(get_message_audit_logs),
-        )
+        .route("/api/admin/messages/audit", get(get_message_audit_logs))
         .route(
             "/api/admin/messages/audit/summary",
             get(get_message_audit_summary),
@@ -470,26 +465,14 @@ pub async fn create_app(db: PgPool, config: Config) -> Result<Router, ApiError> 
         )
         .route("/api/will/audit/my-activity", get(get_my_audit_activity))
         // -- Legacy Content Upload (Issue #XXX) -------------------------------
-        .route(
-            "/api/content/upload",
-            post(upload_legacy_content),
-        )
-        .route(
-            "/api/content",
-            get(list_user_content),
-        )
+        .route("/api/content/upload", post(upload_legacy_content))
+        .route("/api/content", get(list_user_content))
         .route(
             "/api/content/:content_id",
             get(get_content_by_id).delete(delete_content),
         )
-        .route(
-            "/api/content/:content_id/download",
-            get(download_content),
-        )
-        .route(
-            "/api/content/stats",
-            get(get_storage_stats),
-        )
+        .route("/api/content/:content_id/download", get(download_content))
+        .route("/api/content/stats", get(get_storage_stats))
         .with_state(state);
 
     // Add price feed routes with separate state
@@ -571,7 +554,7 @@ async fn get_plan(
             "status": "success",
             "data": p
         }))),
-        None => Err(ApiError::NotFound(format!("Plan {} not found", plan_id))),
+        None => Err(ApiError::NotFound(format!("Plan {plan_id} not found"))),
     }
 }
 
@@ -602,8 +585,7 @@ async fn get_due_for_claim_plan(
             "data": plan
         }))),
         None => Err(ApiError::NotFound(format!(
-            "Plan {} not found or not due for claim",
-            plan_id
+            "Plan {plan_id} not found or not due for claim"
         ))),
     }
 }
@@ -679,7 +661,9 @@ async fn get_message_audit_logs(
     Query(filters): Query<MessageAuditFilters>,
 ) -> Result<Json<Value>, ApiError> {
     let logs = MessageAccessAuditService::get_logs(&state.db, &filters).await?;
-    Ok(Json(json!({ "status": "success", "data": logs, "count": logs.len() })))
+    Ok(Json(
+        json!({ "status": "success", "data": logs, "count": logs.len() }),
+    ))
 }
 
 async fn get_message_audit_summary(
@@ -696,9 +680,10 @@ async fn search_message_audit_logs(
     Query(params): Query<SearchAuditParams>,
 ) -> Result<Json<Value>, ApiError> {
     let limit = params.limit.unwrap_or(100);
-    let logs =
-        MessageAccessAuditService::search_logs(&state.db, &params.q, limit).await?;
-    Ok(Json(json!({ "status": "success", "data": logs, "count": logs.len() })))
+    let logs = MessageAccessAuditService::search_logs(&state.db, &params.q, limit).await?;
+    Ok(Json(
+        json!({ "status": "success", "data": logs, "count": logs.len() }),
+    ))
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -712,17 +697,17 @@ async fn get_message_access_history(
     AuthenticatedUser(_user): AuthenticatedUser,
     Path(message_id): Path<Uuid>,
 ) -> Result<Json<Value>, ApiError> {
-    let logs =
-        MessageAccessAuditService::get_message_logs(&state.db, message_id, None).await?;
-    Ok(Json(json!({ "status": "success", "data": logs, "count": logs.len() })))
+    let logs = MessageAccessAuditService::get_message_logs(&state.db, message_id, None).await?;
+    Ok(Json(
+        json!({ "status": "success", "data": logs, "count": logs.len() }),
+    ))
 }
 
 async fn get_my_message_activity(
     State(state): State<Arc<AppState>>,
     AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<Json<Value>, ApiError> {
-    let activity =
-        MessageAccessAuditService::get_user_activity(&state.db, user.user_id).await?;
+    let activity = MessageAccessAuditService::get_user_activity(&state.db, user.user_id).await?;
     Ok(Json(json!({ "status": "success", "data": activity })))
 }
 
@@ -974,8 +959,7 @@ async fn get_simulation(
             "data": sim
         }))),
         None => Err(ApiError::NotFound(format!(
-            "Simulation {} not found",
-            simulation_id
+            "Simulation {simulation_id} not found"
         ))),
     }
 }
@@ -2238,7 +2222,7 @@ async fn upload_legacy_content(
 ) -> Result<Json<Value>, ApiError> {
     // Validate the content type
     LegacyContentService::validate_content_type(&req.content_type)?;
-    
+
     // For now, we'll create a metadata record. Full implementation would handle file upload.
     let metadata = crate::legacy_content::UploadMetadata {
         original_filename: req.original_filename,
@@ -2246,10 +2230,11 @@ async fn upload_legacy_content(
         file_size: 0, // Would be set from actual file upload
         description: req.description,
     };
-    
-    let storage_path = LegacyContentService::generate_storage_path(user.user_id, &metadata.original_filename);
+
+    let storage_path =
+        LegacyContentService::generate_storage_path(user.user_id, &metadata.original_filename);
     let file_hash = "pending".to_string(); // Would be calculated from file content
-    
+
     let content = LegacyContentService::create_content_record(
         &state.db,
         user.user_id,
@@ -2258,7 +2243,7 @@ async fn upload_legacy_content(
         file_hash,
     )
     .await?;
-    
+
     Ok(Json(json!({
         "status": "success",
         "data": content
@@ -2273,7 +2258,8 @@ async fn list_user_content(
     AuthenticatedUser(user): AuthenticatedUser,
     Query(filters): Query<ContentListFilters>,
 ) -> Result<Json<Value>, ApiError> {
-    let contents = LegacyContentService::list_user_content(&state.db, user.user_id, &filters).await?;
+    let contents =
+        LegacyContentService::list_user_content(&state.db, user.user_id, &filters).await?;
     Ok(Json(json!({
         "status": "success",
         "data": contents,
@@ -2289,7 +2275,8 @@ async fn get_content_by_id(
     Path(content_id): Path<Uuid>,
     AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<Json<Value>, ApiError> {
-    let content = LegacyContentService::get_content_by_id(&state.db, content_id, user.user_id).await?;
+    let content =
+        LegacyContentService::get_content_by_id(&state.db, content_id, user.user_id).await?;
     Ok(Json(json!({
         "status": "success",
         "data": content
@@ -2319,15 +2306,16 @@ async fn download_content(
     Path(content_id): Path<Uuid>,
     AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<axum::response::Response, ApiError> {
-    let content = LegacyContentService::get_content_by_id(&state.db, content_id, user.user_id).await?;
-    
+    let content =
+        LegacyContentService::get_content_by_id(&state.db, content_id, user.user_id).await?;
+
     // In a full implementation, this would read from the FileStorageService
     // For now, return a placeholder response
     use axum::body::Body;
     use axum::http::{header, Response, StatusCode};
-    
+
     let content_disposition = format!("attachment; filename=\"{}\"", content.original_filename);
-    
+
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, &content.content_type)

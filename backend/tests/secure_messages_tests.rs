@@ -8,7 +8,7 @@ mod helpers;
 #[sqlx::test]
 async fn test_create_encrypted_message(pool: PgPool) -> sqlx::Result<()> {
     let user_id = helpers::create_test_user(&pool, "owner@test.com").await?;
-    
+
     let req = xourcex_backend::secure_messages::CreateLegacyMessageRequest {
         beneficiary_contact: "beneficiary@test.com".to_string(),
         message: "This is a secret legacy message".to_string(),
@@ -30,7 +30,7 @@ async fn test_create_encrypted_message(pool: PgPool) -> sqlx::Result<()> {
 #[sqlx::test]
 async fn test_message_encryption_at_rest(pool: PgPool) -> sqlx::Result<()> {
     let user_id = helpers::create_test_user(&pool, "owner2@test.com").await?;
-    
+
     let secret_message = "Highly confidential inheritance instructions";
     let req = xourcex_backend::secure_messages::CreateLegacyMessageRequest {
         beneficiary_contact: "heir@test.com".to_string(),
@@ -43,12 +43,11 @@ async fn test_message_encryption_at_rest(pool: PgPool) -> sqlx::Result<()> {
         .expect("Failed to create message");
 
     // Verify message is encrypted in database
-    let row: (Vec<u8>,) = sqlx::query_as(
-        "SELECT encrypted_payload FROM legacy_messages WHERE id = $1"
-    )
-    .bind(message.id)
-    .fetch_one(&pool)
-    .await?;
+    let row: (Vec<u8>,) =
+        sqlx::query_as("SELECT encrypted_payload FROM legacy_messages WHERE id = $1")
+            .bind(message.id)
+            .fetch_one(&pool)
+            .await?;
 
     // Encrypted payload should not contain plaintext
     let encrypted_str = String::from_utf8_lossy(&row.0);
@@ -61,7 +60,7 @@ async fn test_message_encryption_at_rest(pool: PgPool) -> sqlx::Result<()> {
 async fn test_unauthorized_access_blocked(pool: PgPool) -> sqlx::Result<()> {
     let owner_id = helpers::create_test_user(&pool, "owner3@test.com").await?;
     let other_user_id = helpers::create_test_user(&pool, "other@test.com").await?;
-    
+
     let req = xourcex_backend::secure_messages::CreateLegacyMessageRequest {
         beneficiary_contact: "beneficiary3@test.com".to_string(),
         message: "Private message".to_string(),
@@ -77,7 +76,11 @@ async fn test_unauthorized_access_blocked(pool: PgPool) -> sqlx::Result<()> {
         .await
         .expect("Failed to list messages");
 
-    assert_eq!(messages.len(), 0, "User should not see other users' messages");
+    assert_eq!(
+        messages.len(),
+        0,
+        "User should not see other users' messages"
+    );
 
     Ok(())
 }
@@ -85,7 +88,7 @@ async fn test_unauthorized_access_blocked(pool: PgPool) -> sqlx::Result<()> {
 #[sqlx::test]
 async fn test_list_owner_messages(pool: PgPool) -> sqlx::Result<()> {
     let user_id = helpers::create_test_user(&pool, "owner4@test.com").await?;
-    
+
     // Create multiple messages
     for i in 1..=3 {
         let req = xourcex_backend::secure_messages::CreateLegacyMessageRequest {
@@ -111,26 +114,35 @@ async fn test_list_owner_messages(pool: PgPool) -> sqlx::Result<()> {
 #[sqlx::test]
 async fn test_message_key_rotation(pool: PgPool) -> sqlx::Result<()> {
     let admin_id = helpers::create_test_admin(&pool, "admin@test.com").await?;
-    
+
     // Ensure initial key exists
-    MessageKeyService::ensure_active_key(&pool).await.expect("Failed to ensure key");
-    
-    let keys_before = MessageKeyService::list_keys(&pool).await.expect("Failed to list keys");
+    MessageKeyService::ensure_active_key(&pool)
+        .await
+        .expect("Failed to ensure key");
+
+    let keys_before = MessageKeyService::list_keys(&pool)
+        .await
+        .expect("Failed to list keys");
     let active_count_before = keys_before.iter().filter(|k| k.status == "active").count();
-    
+
     // Rotate key
     let new_key = MessageKeyService::rotate_active_key(&pool, admin_id)
         .await
         .expect("Failed to rotate key");
-    
+
     assert_eq!(new_key.status, "active");
-    
-    let keys_after = MessageKeyService::list_keys(&pool).await.expect("Failed to list keys");
+
+    let keys_after = MessageKeyService::list_keys(&pool)
+        .await
+        .expect("Failed to list keys");
     let active_count_after = keys_after.iter().filter(|k| k.status == "active").count();
     let retired_count_after = keys_after.iter().filter(|k| k.status == "retired").count();
-    
+
     assert_eq!(active_count_after, 1, "Should have exactly one active key");
-    assert!(retired_count_after >= active_count_before, "Old keys should be retired");
+    assert!(
+        retired_count_after >= active_count_before,
+        "Old keys should be retired"
+    );
 
     Ok(())
 }
@@ -138,7 +150,7 @@ async fn test_message_key_rotation(pool: PgPool) -> sqlx::Result<()> {
 #[sqlx::test]
 async fn test_reject_past_unlock_date(pool: PgPool) -> sqlx::Result<()> {
     let user_id = helpers::create_test_user(&pool, "owner5@test.com").await?;
-    
+
     let req = xourcex_backend::secure_messages::CreateLegacyMessageRequest {
         beneficiary_contact: "beneficiary@test.com".to_string(),
         message: "Test message".to_string(),
@@ -146,7 +158,7 @@ async fn test_reject_past_unlock_date(pool: PgPool) -> sqlx::Result<()> {
     };
 
     let result = MessageEncryptionService::create_encrypted_message(&pool, user_id, &req).await;
-    
+
     assert!(result.is_err(), "Should reject past unlock dates");
 
     Ok(())
@@ -155,7 +167,7 @@ async fn test_reject_past_unlock_date(pool: PgPool) -> sqlx::Result<()> {
 #[sqlx::test]
 async fn test_reject_empty_message(pool: PgPool) -> sqlx::Result<()> {
     let user_id = helpers::create_test_user(&pool, "owner6@test.com").await?;
-    
+
     let req = xourcex_backend::secure_messages::CreateLegacyMessageRequest {
         beneficiary_contact: "beneficiary@test.com".to_string(),
         message: "   ".to_string(), // Empty/whitespace only
@@ -163,7 +175,7 @@ async fn test_reject_empty_message(pool: PgPool) -> sqlx::Result<()> {
     };
 
     let result = MessageEncryptionService::create_encrypted_message(&pool, user_id, &req).await;
-    
+
     assert!(result.is_err(), "Should reject empty messages");
 
     Ok(())
@@ -172,7 +184,7 @@ async fn test_reject_empty_message(pool: PgPool) -> sqlx::Result<()> {
 #[sqlx::test]
 async fn test_message_delivery_process(pool: PgPool) -> sqlx::Result<()> {
     let user_id = helpers::create_test_user(&pool, "owner7@test.com").await?;
-    
+
     // Create message that's already due
     let req = xourcex_backend::secure_messages::CreateLegacyMessageRequest {
         beneficiary_contact: "beneficiary7@test.com".to_string(),
@@ -184,7 +196,7 @@ async fn test_message_delivery_process(pool: PgPool) -> sqlx::Result<()> {
     let (key_version, data_key) = MessageKeyService::active_data_key_material(&pool)
         .await
         .expect("Failed to get key material");
-    
+
     let message_id = Uuid::new_v4();
     sqlx::query(
         "INSERT INTO legacy_messages 
@@ -204,7 +216,7 @@ async fn test_message_delivery_process(pool: PgPool) -> sqlx::Result<()> {
     // Process deliveries
     let delivery_service = xourcex_backend::LegacyMessageDeliveryService::new(pool.clone());
     let result = delivery_service.process_due_messages().await;
-    
+
     // Should process at least one message (may fail decryption due to dummy data, but should attempt)
     assert!(result.is_ok() || result.is_err()); // Either succeeds or fails gracefully
 

@@ -6,8 +6,20 @@ use std::path::PathBuf;
 use uuid::Uuid;
 
 const MAX_FILE_SIZE: usize = 524_288_000; // 500MB
-const ALLOWED_VIDEO_TYPES: &[&str] = &["video/mp4", "video/mpeg", "video/quicktime", "video/x-msvideo", "video/webm"];
-const ALLOWED_AUDIO_TYPES: &[&str] = &["audio/mpeg", "audio/wav", "audio/ogg", "audio/mp4", "audio/webm"];
+const ALLOWED_VIDEO_TYPES: &[&str] = &[
+    "video/mp4",
+    "video/mpeg",
+    "video/quicktime",
+    "video/x-msvideo",
+    "video/webm",
+];
+const ALLOWED_AUDIO_TYPES: &[&str] = &[
+    "audio/mpeg",
+    "audio/wav",
+    "audio/ogg",
+    "audio/mp4",
+    "audio/webm",
+];
 const ALLOWED_TEXT_TYPES: &[&str] = &["text/plain", "text/markdown", "text/html"];
 const ALLOWED_DOCUMENT_TYPES: &[&str] = &[
     "application/pdf",
@@ -112,7 +124,7 @@ impl LegacyContentService {
         file_hash: String,
     ) -> Result<LegacyContent, ApiError> {
         let filename = Uuid::new_v4().to_string();
-        
+
         let meta_json = serde_json::json!({
             "description": metadata.description,
             "uploaded_at": Utc::now()
@@ -309,16 +321,16 @@ impl FileStorageService {
     /// Save file to disk
     pub async fn save_file(&self, storage_path: &str, content: &[u8]) -> Result<(), ApiError> {
         let full_path = self.base_path.join(storage_path);
-        
+
         if let Some(parent) = full_path.parent() {
             tokio::fs::create_dir_all(parent).await.map_err(|e| {
                 ApiError::Internal(anyhow::anyhow!("Failed to create directory: {}", e))
             })?;
         }
 
-        tokio::fs::write(&full_path, content).await.map_err(|e| {
-            ApiError::Internal(anyhow::anyhow!("Failed to write file: {}", e))
-        })?;
+        tokio::fs::write(&full_path, content)
+            .await
+            .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to write file: {}", e)))?;
 
         Ok(())
     }
@@ -326,19 +338,19 @@ impl FileStorageService {
     /// Read file from disk
     pub async fn read_file(&self, storage_path: &str) -> Result<Vec<u8>, ApiError> {
         let full_path = self.base_path.join(storage_path);
-        
-        tokio::fs::read(&full_path).await.map_err(|e| {
-            ApiError::Internal(anyhow::anyhow!("Failed to read file: {}", e))
-        })
+
+        tokio::fs::read(&full_path)
+            .await
+            .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to read file: {}", e)))
     }
 
     /// Delete file from disk
     pub async fn delete_file(&self, storage_path: &str) -> Result<(), ApiError> {
         let full_path = self.base_path.join(storage_path);
-        
-        tokio::fs::remove_file(&full_path).await.map_err(|e| {
-            ApiError::Internal(anyhow::anyhow!("Failed to delete file: {}", e))
-        })?;
+
+        tokio::fs::remove_file(&full_path)
+            .await
+            .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to delete file: {}", e)))?;
 
         Ok(())
     }

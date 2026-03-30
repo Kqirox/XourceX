@@ -108,9 +108,13 @@ impl EmergencyAccessService {
         AuditLogService::log(
             &mut *tx,
             Some(admin_id),
+            None,
             audit_action::EMERGENCY_ACCESS_GRANTED,
             Some(req.plan_id),
             Some(entity_type::PLAN),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -197,9 +201,13 @@ impl EmergencyAccessService {
         AuditLogService::log(
             &mut *tx,
             Some(admin_id),
+            None,
             audit_action::EMERGENCY_ACCESS_REVOKED,
             Some(access.plan_id),
             Some(entity_type::PLAN),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -322,9 +330,13 @@ impl EmergencyAccessService {
                 if let Err(e) = AuditLogService::log(
                     &mut *tx,
                     None,
+                    None,
                     audit_action::EMERGENCY_ACCESS_EXPIRED,
                     Some(plan_id),
                     Some(entity_type::PLAN),
+                    None,
+                    None,
+                    None,
                 )
                 .await
                 {

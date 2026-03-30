@@ -216,9 +216,13 @@ impl ComplianceEngine {
         AuditLogService::log(
             &mut *tx,
             Some(user_id),
+            None,
             audit_action::SUSPICIOUS_BORROWING_DETECTED,
             Some(plan_id),
             Some(entity_type::PLAN),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -227,7 +231,7 @@ impl ComplianceEngine {
             &mut tx,
             user_id,
             notif_type::SUSPICIOUS_ACTIVITY_FLAGGED,
-            format!("ALARM: Your account has been flagged for abnormal activity: {}. A compliance officer has been notified.", reason)
+            format!("ALARM: Your account has been flagged for abnormal activity: {reason}. A compliance officer has been notified.")
         ).await?;
 
         tx.commit().await?;

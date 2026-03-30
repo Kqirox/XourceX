@@ -155,10 +155,11 @@ fn plan_row_to_plan_with_beneficiary(row: &PlanRowFull) -> Result<PlanWithBenefi
         fee: row
             .fee
             .parse()
-            .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to parse fee: {}", e)))?,
-        net_amount: row.net_amount.parse().map_err(|e| {
-            ApiError::Internal(anyhow::anyhow!("Failed to parse net_amount: {}", e))
-        })?,
+            .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to parse fee: {e}")))?,
+        net_amount: row
+            .net_amount
+            .parse()
+            .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to parse net_amount: {e}")))?,
         status: row.status.clone(),
         contract_plan_id: row.contract_plan_id,
         distribution_method: row.distribution_method.clone(),
@@ -375,11 +376,15 @@ impl PlanService {
 
         // 3. Audit: This must now return Result and use the transaction
         AuditLogService::log(
-            &mut *tx, // Pass the transaction
+            &mut *tx,
             Some(user_id),
+            None,
             audit_action::PLAN_CREATED,
             Some(plan.id),
             Some(entity_type::PLAN),
+            None,
+            None,
+            None,
         )
         .await?; // If this fails, '?' triggers an early return
 
@@ -479,7 +484,7 @@ impl PlanService {
 
         let plan = match row {
             Some(r) => plan_row_to_plan_with_beneficiary(&r)?,
-            None => return Err(ApiError::NotFound(format!("Plan {} not found", plan_id))),
+            None => return Err(ApiError::NotFound(format!("Plan {plan_id} not found"))),
         };
 
         // Check if plan is paused
@@ -570,9 +575,13 @@ impl PlanService {
         AuditLogService::log(
             &mut *tx,
             Some(user_id),
+            None,
             audit_action::PLAN_CLAIMED,
             Some(plan_id),
             Some(entity_type::PLAN),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -663,11 +672,12 @@ impl PlanService {
                 user_id: row.user_id,
                 title: row.title,
                 description: row.description,
-                fee: row.fee.parse().map_err(|e| {
-                    ApiError::Internal(anyhow::anyhow!("Failed to parse fee: {}", e))
-                })?,
+                fee: row
+                    .fee
+                    .parse()
+                    .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to parse fee: {e}")))?,
                 net_amount: row.net_amount.parse().map_err(|e| {
-                    ApiError::Internal(anyhow::anyhow!("Failed to parse net_amount: {}", e))
+                    ApiError::Internal(anyhow::anyhow!("Failed to parse net_amount: {e}"))
                 })?,
                 status: row.status,
                 contract_plan_id: row.contract_plan_id,
@@ -762,10 +772,10 @@ impl PlanService {
                     title: row.title,
                     description: row.description,
                     fee: row.fee.parse().map_err(|e| {
-                        ApiError::Internal(anyhow::anyhow!("Failed to parse fee: {}", e))
+                        ApiError::Internal(anyhow::anyhow!("Failed to parse fee: {e}"))
                     })?,
                     net_amount: row.net_amount.parse().map_err(|e| {
-                        ApiError::Internal(anyhow::anyhow!("Failed to parse net_amount: {}", e))
+                        ApiError::Internal(anyhow::anyhow!("Failed to parse net_amount: {e}"))
                     })?,
                     status: row.status,
                     contract_plan_id: row.contract_plan_id,
@@ -859,10 +869,10 @@ impl PlanService {
                     title: row.title,
                     description: row.description,
                     fee: row.fee.parse().map_err(|e| {
-                        ApiError::Internal(anyhow::anyhow!("Failed to parse fee: {}", e))
+                        ApiError::Internal(anyhow::anyhow!("Failed to parse fee: {e}"))
                     })?,
                     net_amount: row.net_amount.parse().map_err(|e| {
-                        ApiError::Internal(anyhow::anyhow!("Failed to parse net_amount: {}", e))
+                        ApiError::Internal(anyhow::anyhow!("Failed to parse net_amount: {e}"))
                     })?,
                     status: row.status,
                     contract_plan_id: row.contract_plan_id,
@@ -921,7 +931,7 @@ impl PlanService {
         // Note: get_plan_by_id must also use the generic <'a, E> pattern
         let plan = Self::get_plan_by_id(&mut *tx, plan_id, user_id)
             .await?
-            .ok_or_else(|| ApiError::NotFound(format!("Plan {} not found", plan_id)))?;
+            .ok_or_else(|| ApiError::NotFound(format!("Plan {plan_id} not found")))?;
 
         // Business Logic Checks
         if plan.status == "deactivated" {
@@ -958,9 +968,13 @@ impl PlanService {
         AuditLogService::log(
             &mut *tx,
             Some(user_id),
+            None,
             audit_action::PLAN_DEACTIVATED,
             Some(plan_id),
             Some(entity_type::PLAN),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -995,7 +1009,7 @@ impl fmt::Display for KycStatus {
             KycStatus::Approved => "approved",
             KycStatus::Rejected => "rejected",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -1047,9 +1061,13 @@ impl KycService {
         AuditLogService::log(
             &mut *tx, // Re-borrow here as well
             Some(user_id),
+            None,
             audit_action::KYC_SUBMITTED,
             Some(user_id),
             Some(entity_type::USER),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -1117,6 +1135,7 @@ impl KycService {
         // Audit log is now ATOMIC
         AuditLogService::log(
             &mut *tx,
+            None,
             Some(admin_id),
             if record.status == "approved" {
                 audit_action::KYC_APPROVED
@@ -1125,6 +1144,9 @@ impl KycService {
             },
             Some(user_id),
             Some(entity_type::USER),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -1443,14 +1465,13 @@ impl RevenueMetricsService {
         let query = format!(
             r#"
             SELECT 
-                DATE_TRUNC('{}', created_at)::DATE::TEXT as date,
+                DATE_TRUNC('{trunc}', created_at)::DATE::TEXT as date,
                 COALESCE(SUM(fee), 0)::FLOAT8 as amount
             FROM plans
-            WHERE created_at >= NOW() - INTERVAL '{}'
+            WHERE created_at >= NOW() - INTERVAL '{interval}'
             GROUP BY 1
             ORDER BY 1
-            "#,
-            trunc, interval
+            "#
         );
 
         let rows = sqlx::query_as::<_, Row>(&query).fetch_all(pool).await?;
@@ -3222,9 +3243,13 @@ impl EmergencyAccessService {
         AuditLogService::log(
             &mut *tx,
             Some(user_id),
+            None,
             audit_action::EMERGENCY_ACCESS_GRANTED,
             Some(grant.id),
             Some(entity_type::USER),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -3309,9 +3334,13 @@ impl EmergencyAccessService {
         AuditLogService::log(
             &mut *tx,
             Some(user_id),
+            None,
             audit_action::EMERGENCY_ACCESS_REVOKED,
             Some(updated.id),
             Some(entity_type::USER),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -3507,10 +3536,14 @@ impl EmergencyAdminService {
         // Audit log
         AuditLogService::log(
             &mut *tx,
+            None,
             Some(admin_id),
             audit_action::PLAN_PAUSED,
             Some(req.plan_id),
             Some(entity_type::PLAN),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -3578,10 +3611,14 @@ impl EmergencyAdminService {
         // Audit log
         AuditLogService::log(
             &mut *tx,
+            None,
             Some(admin_id),
             audit_action::PLAN_UNPAUSED,
             Some(req.plan_id),
             Some(entity_type::PLAN),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -3669,10 +3706,14 @@ impl EmergencyAdminService {
         // Audit log
         AuditLogService::log(
             &mut *tx,
+            None,
             Some(admin_id),
             action_type,
             Some(req.plan_id),
             Some(entity_type::PLAN),
+            None,
+            None,
+            None,
         )
         .await?;
 

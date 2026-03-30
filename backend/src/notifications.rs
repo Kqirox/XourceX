@@ -154,7 +154,7 @@ impl NotificationService {
         .fetch_optional(db)
         .await?;
 
-        row.ok_or_else(|| ApiError::NotFound(format!("Notification {} not found", notif_id)))
+        row.ok_or_else(|| ApiError::NotFound(format!("Notification {notif_id} not found")))
     }
 }
 
@@ -245,14 +245,18 @@ pub mod audit_action {
     pub const LOAN_PARTIAL_REPAYMENT: &str = "loan_partial_repayment";
     pub const LOAN_LIQUIDATED: &str = "loan_liquidated";
     pub const LOAN_MARKED_OVERDUE: &str = "loan_marked_overdue";
+    // Admin & System
+    pub const EMERGENCY_STOP: &str = "emergency_stop";
+    pub const PARAMETER_UPDATE: &str = "parameter_update";
     // Emergency access (Issue #293)
     pub const EMERGENCY_ACCESS_GRANTED: &str = "emergency_access_granted";
     pub const EMERGENCY_ACCESS_REVOKED: &str = "emergency_access_revoked";
     pub const EMERGENCY_ACCESS_EXPIRED: &str = "emergency_access_expired";
+    // Insurance fund monitoring (Issue #249)
+    pub const FUND_STATUS_CHANGE: &str = "fund_status_change";
     pub const REPAYMENT_REMINDER_SENT: &str = "repayment_reminder_sent";
     pub const YIELD_UPDATE_SENT: &str = "yield_update_sent";
     // Insurance fund monitoring (Issue #249)
-    pub const FUND_STATUS_CHANGE: &str = "fund_status_change";
     pub const INSURANCE_CLAIM_CREATED: &str = "insurance_claim_created";
     pub const INSURANCE_CLAIM_PROCESSED: &str = "insurance_claim_processed";
     pub const INSURANCE_CLAIM_PAID: &str = "insurance_claim_paid";
@@ -272,35 +276,49 @@ pub mod entity_type {
 pub struct ActionLog {
     pub id: Uuid,
     pub user_id: Option<Uuid>,
+    pub admin_id: Option<Uuid>,
     pub action: String,
     pub entity_id: Option<Uuid>,
     pub entity_type: Option<String>,
+    pub old_value: Option<String>,
+    pub new_value: Option<String>,
+    pub metadata: Option<serde_json::Value>,
     pub timestamp: DateTime<Utc>,
 }
 
 pub struct AuditLogService;
 
 impl AuditLogService {
+    #[allow(clippy::too_many_arguments)]
     pub async fn log(
-        // Use an executor that can be a Pool or a Transaction
         executor: impl sqlx::PgExecutor<'_>,
         user_id: Option<Uuid>,
+        admin_id: Option<Uuid>,
         action: &str,
         entity_id: Option<Uuid>,
         entity_type: Option<&str>,
+        old_value: Option<&str>,
+        new_value: Option<&str>,
+        metadata: Option<serde_json::Value>,
     ) -> Result<(), ApiError> {
-        // Return Result instead of ()
         sqlx::query(
             r#"
-            INSERT INTO action_logs (user_id, action, entity_id, entity_type)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO action_logs (
+                user_id, admin_id, action, entity_id, entity_type, 
+                old_value, new_value, metadata
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             "#,
         )
         .bind(user_id)
+        .bind(admin_id)
         .bind(action)
         .bind(entity_id)
         .bind(entity_type)
-        .execute(executor) // Execute on the provided transaction/pool
+        .bind(old_value)
+        .bind(new_value)
+        .bind(metadata)
+        .execute(executor)
         .await?;
 
         Ok(())
@@ -309,7 +327,8 @@ impl AuditLogService {
     pub async fn list_all(db: &PgPool) -> Result<Vec<ActionLog>, ApiError> {
         let rows = sqlx::query_as::<_, ActionLog>(
             r#"
-            SELECT id, user_id, action, entity_id, entity_type, timestamp
+            SELECT id, user_id, admin_id, action, entity_id, entity_type, 
+                   old_value, new_value, metadata, timestamp
             FROM action_logs
             ORDER BY timestamp DESC
             "#,
@@ -328,7 +347,8 @@ impl AuditLogService {
         let offset = ((page.saturating_sub(1)) as i64) * (limit as i64);
         let rows = sqlx::query_as::<_, ActionLog>(
             r#"
-            SELECT id, user_id, action, entity_id, entity_type, timestamp
+            SELECT id, user_id, admin_id, action, entity_id, entity_type, 
+                   old_value, new_value, metadata, timestamp
             FROM action_logs
             ORDER BY timestamp DESC
             LIMIT $1 OFFSET $2
@@ -359,13 +379,32 @@ impl AuditLogService {
     pub async fn list_for_user(db: &PgPool, user_id: Uuid) -> Result<Vec<ActionLog>, ApiError> {
         let rows = sqlx::query_as::<_, ActionLog>(
             r#"
-            SELECT id, user_id, action, entity_id, entity_type, timestamp
+            SELECT id, user_id, admin_id, action, entity_id, entity_type, 
+                   old_value, new_value, metadata, timestamp
             FROM action_logs
             WHERE user_id = $1
             ORDER BY timestamp DESC
             "#,
         )
         .bind(user_id)
+        .fetch_all(db)
+        .await?;
+
+        Ok(rows)
+    }
+
+    /// Return audit log entries for a specific admin, newest first.
+    pub async fn list_for_admin(db: &PgPool, admin_id: Uuid) -> Result<Vec<ActionLog>, ApiError> {
+        let rows = sqlx::query_as::<_, ActionLog>(
+            r#"
+            SELECT id, user_id, admin_id, action, entity_id, entity_type, 
+                   old_value, new_value, metadata, timestamp
+            FROM action_logs
+            WHERE admin_id = $1
+            ORDER BY timestamp DESC
+            "#,
+        )
+        .bind(admin_id)
         .fetch_all(db)
         .await?;
 
@@ -502,8 +541,7 @@ mod tests {
         // The `#[serde(rename = "type")]` on notif_type must produce `"type"` in JSON
         assert!(
             json.get("type").is_some(),
-            "Expected JSON key 'type', got: {}",
-            json
+            "Expected JSON key 'type', got: {json}"
         );
         assert_eq!(json["type"], notif_type::KYC_APPROVED);
         // `notif_type` key must NOT appear (it's renamed)
@@ -528,9 +566,13 @@ mod tests {
         let log = ActionLog {
             id: Uuid::new_v4(),
             user_id: Some(Uuid::new_v4()),
+            admin_id: None,
             action: audit_action::PLAN_CLAIMED.to_string(),
             entity_id: Some(Uuid::new_v4()),
             entity_type: Some(entity_type::PLAN.to_string()),
+            old_value: None,
+            new_value: None,
+            metadata: None,
             timestamp: Utc::now(),
         };
         let json = serde_json::to_value(&log).unwrap();
@@ -543,9 +585,13 @@ mod tests {
         let log = ActionLog {
             id: Uuid::new_v4(),
             user_id: None,
+            admin_id: None,
             action: audit_action::KYC_APPROVED.to_string(),
             entity_id: None,
             entity_type: None,
+            old_value: None,
+            new_value: None,
+            metadata: None,
             timestamp: Utc::now(),
         };
         let json = serde_json::to_value(&log).unwrap();

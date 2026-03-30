@@ -420,9 +420,13 @@ impl InsuranceFundService {
                 AuditLogService::log(
                     &mut *tx,
                     None,
+                    None,
                     audit_action::FUND_STATUS_CHANGE,
                     Some(fund.id),
                     Some(entity_type::INSURANCE_FUND),
+                    None,
+                    None,
+                    None,
                 )
                 .await?;
 
@@ -551,9 +555,13 @@ impl InsuranceFundService {
         AuditLogService::log(
             &mut *tx,
             Some(user_id),
+            None,
             audit_action::INSURANCE_CLAIM_CREATED,
             Some(claim.id),
             Some(entity_type::INSURANCE_CLAIM),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -625,9 +633,13 @@ impl InsuranceFundService {
         AuditLogService::log(
             &mut *tx,
             Some(admin_id),
+            None,
             audit_action::INSURANCE_CLAIM_PROCESSED,
             Some(claim.id),
             Some(entity_type::INSURANCE_CLAIM),
+            None,
+            None,
+            None,
         )
         .await?;
 
@@ -695,9 +707,13 @@ impl InsuranceFundService {
         AuditLogService::log(
             &mut *tx,
             None,
+            None,
             audit_action::INSURANCE_CLAIM_PAID,
             Some(claim.id),
             Some(entity_type::INSURANCE_CLAIM),
+            None,
+            None,
+            None,
         )
         .await?;
 

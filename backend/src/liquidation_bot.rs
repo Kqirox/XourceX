@@ -151,9 +151,13 @@ impl LiquidationBotService {
             AuditLogService::log(
                 &mut *tx,
                 Some(loan.user_id),
+                None, // Not an admin action in the traditional sense, but we can track it
                 audit_action::LIQUIDATION_WARNING, // fallback
                 Some(loan.plan_id),
                 Some(entity_type::PLAN),
+                None,
+                None,
+                None,
             )
             .await?;
 

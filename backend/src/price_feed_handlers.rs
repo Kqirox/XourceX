@@ -1,5 +1,6 @@
 use crate::api_error::ApiError;
 use crate::auth::AuthenticatedAdmin;
+use crate::notifications::AuditLogService;
 use crate::price_feed::{PriceFeedService, PriceFeedSource};
 use axum::extract::{Path, State};
 use axum::Json;
@@ -130,6 +131,23 @@ pub async fn register_price_feed(
         .register_feed(&req.asset_code, source, &req.feed_id)
         .await?;
 
+    // Audit Log
+    AuditLogService::log(
+        &(_db),
+        None,
+        Some(_admin.admin_id),
+        crate::notifications::audit_action::PARAMETER_UPDATE,
+        None,
+        Some("price_feed"),
+        None,
+        Some(&format!(
+            "{}: {}/{}",
+            req.asset_code, req.source, req.feed_id
+        )),
+        None,
+    )
+    .await?;
+
     Ok(Json(json!({
         "status": "success",
         "message": format!("Price feed registered for {}", req.asset_code),
@@ -157,6 +175,20 @@ pub async fn update_price(
     }
 
     let asset_price = price_service.update_price(&asset_code, req.price).await?;
+
+    // Audit Log
+    AuditLogService::log(
+        &(_db),
+        None,
+        Some(_admin.admin_id),
+        crate::notifications::audit_action::PARAMETER_UPDATE,
+        None,
+        Some("price"),
+        None,
+        Some(&req.price.to_string()),
+        None,
+    )
+    .await?;
 
     Ok(Json(json!({
         "status": "success",
@@ -222,7 +254,7 @@ pub async fn get_plan_valuation(
         tracing::error!("Failed to fetch plan: {}", e);
         ApiError::Internal(anyhow::anyhow!("Database error"))
     })?
-    .ok_or_else(|| ApiError::NotFound(format!("Plan {} not found", plan_id)))?;
+    .ok_or_else(|| ApiError::NotFound(format!("Plan {plan_id} not found")))?;
 
     let asset_code = plan.0;
     let amount = Decimal::from_str(&plan.1).map_err(|e| {

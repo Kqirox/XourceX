@@ -94,9 +94,13 @@ impl LendingNotificationService {
             AuditLogService::log(
                 &mut *tx,
                 Some(loan.user_id),
+                None,
                 audit_action::REPAYMENT_REMINDER_SENT,
                 Some(loan.loan_id),
                 Some(entity_type::LOAN),
+                None,
+                None,
+                None,
             )
             .await?;
 
@@ -165,9 +169,13 @@ impl LendingNotificationService {
             AuditLogService::log(
                 &mut *tx,
                 Some(row.user_id),
+                None,
                 audit_action::YIELD_UPDATE_SENT,
                 Some(row.user_id),
                 Some(entity_type::USER),
+                None,
+                None,
+                None,
             )
             .await?;
 

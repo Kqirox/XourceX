@@ -60,7 +60,7 @@ impl InterestReconciliationService {
         .fetch_all(&self.db)
         .await
         .map_err(|e| {
-            ApiError::Internal(anyhow::anyhow!("DB error loading expected yields: {}", e))
+            ApiError::Internal(anyhow::anyhow!("DB error loading expected yields: {e}"))
         })?;
 
         for row in asset_yields {
@@ -86,24 +86,29 @@ impl InterestReconciliationService {
                     row.asset_code, row.expected_yield, on_chain_yield, difference
                 );
 
-                let mut tx =
-                    self.db.begin().await.map_err(|e| {
-                        ApiError::Internal(anyhow::anyhow!("Tx start error: {}", e))
-                    })?;
+                let mut tx = self
+                    .db
+                    .begin()
+                    .await
+                    .map_err(|e| ApiError::Internal(anyhow::anyhow!("Tx start error: {e}")))?;
 
                 // Log discrepancy to audit logs
                 AuditLogService::log(
                     &mut *tx,
-                    None, // System action
+                    None,
+                    None,
                     "yield_discrepancy_detected",
                     None,
                     Some("system"),
+                    None,
+                    None,
+                    None,
                 )
                 .await?;
 
                 tx.commit()
                     .await
-                    .map_err(|e| ApiError::Internal(anyhow::anyhow!("Tx commit error: {}", e)))?;
+                    .map_err(|e| ApiError::Internal(anyhow::anyhow!("Tx commit error: {e}")))?;
             } else {
                 info!(
                     "Yield reconciled for {}. Expected {}, On-Chain {}",
@@ -173,9 +178,13 @@ impl InterestReconciliationService {
                 AuditLogService::log(
                     &mut *tx,
                     None,
+                    None,
                     "vault_balance_discrepancy_detected",
                     None,
                     Some("system"),
+                    None,
+                    None,
+                    None,
                 )
                 .await?;
 

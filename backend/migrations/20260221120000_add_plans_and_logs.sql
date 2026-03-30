@@ -1,9 +1,6 @@
--- Migration: Add plan_logs table
--- NOTE:
--- The plans table is already created in the initial migration.
--- This migration should only add the dependent plan_logs table.
+-- Migration: Add plan_logs table (plans already created in init)
 
-CREATE TABLE plan_logs (
+CREATE TABLE IF NOT EXISTS plan_logs (
     id SERIAL PRIMARY KEY,
     plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
     action VARCHAR(64) NOT NULL,
