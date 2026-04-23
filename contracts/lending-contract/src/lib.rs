@@ -1,7 +1,7 @@
 #![no_std]
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, log, symbol_short, vec, Address, Env,
-    IntoVal, InvokeError, Val, Vec,
+    contract, contracterror, contractimpl, contracttype, log, symbol_short, token, vec, Address,
+    Env, IntoVal, InvokeError, Val, Vec,
 };
 
 // ─────────────────────────────────────────────────
@@ -79,6 +79,11 @@ pub trait LoanNFTInterface {
     fn burn(env: Env, loan_id: u64);
     fn get_metadata(env: Env, loan_id: u64) -> Option<LoanMetadata>;
     fn owner_of(env: Env, loan_id: u64) -> Option<Address>;
+}
+
+#[soroban_sdk::contractclient(name = "FlashLoanReceiverClient")]
+pub trait FlashLoanReceiverInterface {
+    fn execute_operation(env: Env, amount: u64, fee: u64, initiator: Address);
 }
 
 // ─────────────────────────────────────────────────
@@ -174,6 +179,14 @@ pub struct LateFeeChargedEvent {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FlashLoanEvent {
+    pub receiver: Address,
+    pub amount: u64,
+    pub fee: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LoanRefinancedEvent {
     pub old_loan_id: u64,
     pub new_loan_id: u64,
@@ -234,11 +247,12 @@ pub enum LendingError {
     CollateralNotWhitelisted = 12,
     UtilizationCapExceeded = 13,
     ReentrantCall = 14,
-    CannotRefinance = 15,
-    InvalidRefinanceTerms = 16,
-    LoanNotFound = 17,
-    TooManyLoans = 18,
-    InvalidSplitAmounts = 19,
+    FlashLoanNotRepaid = 15,
+    CannotRefinance = 16,
+    InvalidRefinanceTerms = 17,
+    LoanNotFound = 18,
+    TooManyLoans = 19,
+    InvalidSplitAmounts = 20,
 }
 
 // ─────────────────────────────────────────────────
@@ -260,7 +274,8 @@ pub enum DataKey {
     NFTToken,
     ReentrancyGuard,
     LateFeesAccrued(u64), // Track late fees for a specific loan_id
-    UserLoans(Address),   // Track multiple loans per user (Vec<u64>)
+    FlashLoanFeeBps,
+    UserLoans(Address), // Track multiple loans per user (Vec<u64>)
 }
 
 // ─────────────────────────────────────────────────
@@ -1217,6 +1232,78 @@ impl LendingContract {
     pub fn get_late_fee_rate(env: Env) -> u32 {
         let pool = Self::get_pool(&env);
         pool.late_fee_rate_bps
+    }
+
+    pub fn get_flash_loan_fee(env: Env) -> u32 {
+        env.storage()
+            .instance()
+            .get(&DataKey::FlashLoanFeeBps)
+            .unwrap_or(9u32) // Default to 0.09% = 9 bps
+    }
+
+    pub fn set_flash_loan_fee(env: Env, admin: Address, fee_bps: u32) -> Result<(), LendingError> {
+        Self::require_admin(&env, &admin)?;
+        env.storage()
+            .instance()
+            .set(&DataKey::FlashLoanFeeBps, &fee_bps);
+        Ok(())
+    }
+
+    pub fn flash_loan(env: Env, receiver_id: Address, amount: u64) -> Result<(), LendingError> {
+        Self::require_initialized(&env)?;
+        Self::enter_reentrancy_guard(&env)?;
+
+        if amount == 0 {
+            return Err(LendingError::InvalidAmount);
+        }
+
+        let mut pool = Self::get_pool(&env);
+        let available = pool.total_deposits.saturating_sub(pool.total_borrowed);
+        if amount > available {
+            return Err(LendingError::InsufficientLiquidity);
+        }
+
+        let fee_bps = Self::get_flash_loan_fee(env.clone());
+        let fee = (amount as u128)
+            .checked_mul(fee_bps as u128)
+            .and_then(|v| v.checked_div(10000))
+            .unwrap_or(0) as u64;
+
+        let token_addr = Self::get_token(&env);
+        let contract_id = env.current_contract_address();
+
+        let token_client = token::Client::new(&env, &token_addr);
+        let balance_before = token_client.balance(&contract_id);
+
+        // 1. Transfer to receiver
+        token_client.transfer(&contract_id, &receiver_id, &(amount as i128));
+
+        // 2. Call execute_operation on receiver
+        let receiver_client = FlashLoanReceiverClient::new(&env, &receiver_id);
+        receiver_client.execute_operation(&amount, &fee, &receiver_id);
+
+        // 3. Ensure repayment
+        let balance_after = token_client.balance(&contract_id);
+        let required_balance = balance_before + (fee as i128);
+
+        if balance_after < required_balance {
+            return Err(LendingError::FlashLoanNotRepaid);
+        }
+
+        pool.total_deposits += fee;
+        Self::set_pool(&env, &pool);
+
+        env.events().publish(
+            (symbol_short!("POOL"), symbol_short!("FLASHL")),
+            FlashLoanEvent {
+                receiver: receiver_id,
+                amount,
+                fee,
+            },
+        );
+
+        Self::exit_reentrancy_guard(&env);
+        Ok(())
     }
 
     /// Get the refinancing fee rate in basis points
