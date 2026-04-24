@@ -13,6 +13,8 @@ import PortfolioIcon from "@/app/svg/PortfolioIcon";
 import SecurityIcon from "@/app/svg/SecurityIcon";
 import SwapIcon from "@/app/svg/SwapIcon";
 
+import EmergencyIcon from "@/app/svg/EmergencyIcon";
+
 const normalizePath = (path: string) => {
   if (path !== "/" && path.endsWith("/")) {
     return path.slice(0, -1);
@@ -32,6 +34,7 @@ const SIDEBAR_ITEMS = [
     icon: InactivityIcon,
   },
   { label: "Security", href: "/asset-owner/security", icon: SecurityIcon },
+  { label: "Emergency", href: "/asset-owner/emergency", icon: EmergencyIcon },
 ];
 
 export default function Sidebar() {
