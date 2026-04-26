@@ -3830,6 +3830,7 @@ impl InheritanceContract {
                 input.claim_code,
                 input.bank_account.clone(),
                 input.allocation_bp,
+                input.priority,
             ) {
                 Ok(beneficiary) => {
                     plan.total_allocation_bp = new_total;

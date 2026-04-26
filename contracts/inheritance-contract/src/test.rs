@@ -4919,6 +4919,7 @@ fn test_batch_add_beneficiaries_success() {
             claim_code: 333333u32,
             bank_account: create_test_bytes(&env, "3333333333333333"),
             allocation_bp: 6000u32,
+            priority: 1u32,
         },
         BeneficiaryInput {
             name: String::from_str(&env, "Dave"),
@@ -4926,6 +4927,7 @@ fn test_batch_add_beneficiaries_success() {
             claim_code: 444444u32,
             bank_account: create_test_bytes(&env, "4444444444444444"),
             allocation_bp: 4000u32,
+            priority: 2u32,
         },
     ];
     let (success, fail) = client.batch_add_beneficiaries(&owner, &plan_id, &inputs);
@@ -4949,6 +4951,7 @@ fn test_batch_add_beneficiaries_partial_fail_over_allocation() {
             claim_code: 555555u32,
             bank_account: create_test_bytes(&env, "5555555555555555"),
             allocation_bp: 1000u32,
+            priority: 1u32,
         },
     ];
     let (success, fail) = client.batch_add_beneficiaries(&owner, &plan_id, &inputs);
@@ -4969,6 +4972,7 @@ fn test_batch_add_beneficiaries_limit_exceeded() {
             claim_code: i,
             bank_account: create_test_bytes(&env, "1234"),
             allocation_bp: 100u32,
+            priority: i,
         });
     }
     let result = client.try_batch_add_beneficiaries(&owner, &plan_id, &inputs);
@@ -4989,6 +4993,7 @@ fn test_batch_add_beneficiaries_unauthorized() {
             claim_code: 123456u32,
             bank_account: create_test_bytes(&env, "1234"),
             allocation_bp: 1000u32,
+            priority: 1u32,
         },
     ];
     let result = client.try_batch_add_beneficiaries(&stranger, &plan_id, &inputs);
@@ -5225,6 +5230,7 @@ fn test_batch_claim_success() {
             111111u32,
             create_test_bytes(&env, "1111111111111111"),
             5000u32,
+            1u32,
         ),
         (
             String::from_str(&env, "Bob"),
@@ -5232,6 +5238,7 @@ fn test_batch_claim_success() {
             222222u32,
             create_test_bytes(&env, "2222222222222222"),
             5000u32,
+            2u32,
         ),
     ];
     let plan_id = client.create_inheritance_plan(&plan_params(
@@ -5280,6 +5287,7 @@ fn test_batch_claim_partial_fail_wrong_code() {
             111111u32,
             create_test_bytes(&env, "1111111111111111"),
             10000u32,
+            1u32,
         ),
     ];
     let plan_id = client.create_inheritance_plan(&plan_params(
@@ -5320,6 +5328,7 @@ fn test_batch_claim_no_kyc_counted_as_fail() {
             111111u32,
             create_test_bytes(&env, "1111111111111111"),
             10000u32,
+            1u32,
         ),
     ];
     let plan_id = client.create_inheritance_plan(&plan_params(
@@ -5358,6 +5367,7 @@ fn test_batch_claim_double_claim_counted_as_fail() {
             111111u32,
             create_test_bytes(&env, "1111111111111111"),
             10000u32,
+            1u32,
         ),
     ];
     let plan_id = client.create_inheritance_plan(&plan_params(
@@ -5404,6 +5414,7 @@ fn test_batch_claim_limit_exceeded() {
             111111u32,
             create_test_bytes(&env, "1111111111111111"),
             10000u32,
+            1u32,
         ),
     ];
     let plan_id = client.create_inheritance_plan(&plan_params(
