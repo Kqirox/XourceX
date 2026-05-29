@@ -1,5 +1,5 @@
 # Multi-stage build for XourceX Backend
-FROM rust:1.75-slim as builder
+FROM rust:1.81-slim as builder
 
 WORKDIR /app
 
@@ -47,3 +47,7 @@ EXPOSE 8080
 
 # Run the binary
 CMD ["/app/xourcex-backend"]
+
+
+# Checking the binary
+RUN /app/xourcex-backend --version
