@@ -23,7 +23,6 @@ const REWARD_PRECISION: u64 = 1_000_000_000; // 9 decimals for reward calculatio
 const LIQUIDATION_THRESHOLD_BPS: u32 = 15000; // 150% liquidation threshold in basis points
                                               // Insurance constants
 const DEFAULT_INSURANCE_PREMIUM_RATE_BPS: u32 = 200; // 2% premium of loan principal
-const INSURANCE_CLAIM_PAYBACK_BPS: u32 = 10000; // 100% coverage
 
 // ─────────────────────────────────────────────────
 // Data Types
@@ -231,6 +230,25 @@ pub struct LateFeeChargedEvent {
     pub days_overdue: u64,
     pub total_with_late_fees: u64,
     pub timestamp: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BadDebtLiquidationEvent {
+    pub loan_id: u64,
+    pub borrower: Address,
+    pub asset: Address,
+    pub outstanding_balance: u64,
+    pub collateral_seized: u64,
+    pub shortfall_covered: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BadDebtReserveReplenishedEvent {
+    pub asset: Address,
+    pub amount: u64,
+    pub new_reserve_balance: u64,
 }
 
 #[contracttype]
@@ -3060,6 +3078,119 @@ impl LendingContract {
         Ok(())
     }
 
+    pub fn replenish_bad_debt_reserve(
+        env: Env,
+        admin: Address,
+        asset: Address,
+        amount: u64,
+    ) -> Result<u64, LendingError> {
+        Self::require_not_paused(&env)?;
+        Self::require_initialized(&env)?;
+        Self::require_admin(&env, &admin)?;
+
+        if amount == 0 {
+            return Err(LendingError::InvalidAmount);
+        }
+
+        let mut pool = Self::get_pool(&env, &asset)?;
+        let contract_id = env.current_contract_address();
+
+        Self::transfer(&env, &asset, &admin, &contract_id, amount)?;
+
+        pool.bad_debt_reserve = pool.bad_debt_reserve.saturating_add(amount);
+        Self::set_pool(&env, &asset, &pool);
+
+        env.events().publish(
+            (symbol_short!("POOL"), symbol_short!("BADDEBR")),
+            BadDebtReserveReplenishedEvent {
+                asset: asset.clone(),
+                amount,
+                new_reserve_balance: pool.bad_debt_reserve,
+            },
+        );
+
+        log!(
+            &env,
+            "Bad debt reserve replenished for asset {} by {}: new balance={} ",
+            asset,
+            amount,
+            pool.bad_debt_reserve
+        );
+
+        Ok(pool.bad_debt_reserve)
+    }
+
+    pub fn liquidate_bad_debt(
+        env: Env,
+        admin: Address,
+        borrower: Address,
+    ) -> Result<u64, LendingError> {
+        Self::require_not_paused(&env)?;
+        Self::require_initialized(&env)?;
+        Self::require_admin(&env, &admin)?;
+
+        let loan: LoanRecord = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Loan(borrower.clone()))
+            .ok_or(LendingError::NoOpenLoan)?;
+
+        // Only allow write-off after the grace period has expired.
+        let is_in_grace = Self::is_in_grace_period(env.clone(), borrower.clone())?;
+        if is_in_grace {
+            return Err(LendingError::InvalidAmount);
+        }
+
+        let outstanding_balance = Self::get_repayment_amount(env.clone(), borrower.clone())?;
+        let collateral_seized = loan.collateral_amount;
+        let shortfall = outstanding_balance.saturating_sub(collateral_seized);
+
+        let mut pool = Self::get_pool(&env, &loan.asset)?;
+        if shortfall > 0 {
+            if pool.bad_debt_reserve < shortfall {
+                return Err(LendingError::InsufficientLiquidity);
+            }
+            pool.bad_debt_reserve = pool.bad_debt_reserve.saturating_sub(shortfall);
+        }
+
+        pool.total_borrowed = pool.total_borrowed.saturating_sub(loan.principal);
+        Self::set_pool(&env, &loan.asset, &pool);
+
+        env.storage()
+            .persistent()
+            .remove(&DataKey::Loan(borrower.clone()));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::LoanById(loan.loan_id));
+        Self::remove_user_loan(&env, &borrower, loan.loan_id);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::LateFeesAccrued(loan.loan_id));
+
+        env.events().publish(
+            (symbol_short!("POOL"), symbol_short!("BADDEBT")),
+            BadDebtLiquidationEvent {
+                loan_id: loan.loan_id,
+                borrower: borrower.clone(),
+                asset: loan.asset.clone(),
+                outstanding_balance,
+                collateral_seized,
+                shortfall_covered: shortfall,
+            },
+        );
+
+        log!(
+            &env,
+            "Bad debt liquidation executed for loan {}: outstanding={}, collateral={}, shortfall_covered={}",
+            loan.loan_id,
+            outstanding_balance,
+            collateral_seized,
+            shortfall
+        );
+
+        Ok(shortfall)
+    }
+
     pub fn allocate_reserves(
         env: Env,
         admin: Address,
@@ -3423,8 +3554,10 @@ impl LendingContract {
         env.storage().instance().set(&DataKey::InsuranceFund, &fund);
 
         // Transfer claim amount to contract (funds holder for protocol)
-        // In a real system, this would be transferred to a claims reserve.
-        // Here we only update the fund accounting and emit the claim event.
+        // In a real system, this would be transferred to a claims reserve
+
+        // Transfer from contract to claims reserve (in this case, just update balance tracking)
+        // The actual transfer would happen when liquidation processes the claim
 
         // Emit event
         env.events().publish(

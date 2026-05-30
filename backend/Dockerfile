@@ -1,5 +1,5 @@
 # Multi-stage build for XourceX Backend
-FROM rust:1.81-slim as builder
+FROM rust:1.96-slim AS builder
 
 WORKDIR /app
 
