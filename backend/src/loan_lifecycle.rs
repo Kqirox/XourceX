@@ -522,6 +522,7 @@ impl LoanLifecycleService {
         .await?;
 
         tx.commit().await?;
+        crate::metrics::inc_loans_created();
         Ok(record)
     }
 
@@ -931,6 +932,9 @@ impl LoanLifecycleService {
         .await?;
 
         tx.commit().await?;
+        if fully_repaid {
+            crate::metrics::inc_loans_repaid();
+        }
         Ok(record)
     }
 
@@ -994,6 +998,7 @@ impl LoanLifecycleService {
         .await?;
 
         tx.commit().await?;
+        crate::metrics::inc_loans_liquidated();
         Ok(record)
     }
 }
