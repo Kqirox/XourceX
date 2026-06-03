@@ -19,10 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Run the rest of startup inside a helper so any error can be captured
     // by Sentry before the guard is dropped.
     if let Err(e) = run().await {
-        error_tracking::capture_message(
-            &format!("Fatal startup error: {e}"),
-            sentry::Level::Fatal,
-        );
+        error_tracking::capture_message(&format!("Fatal startup error: {e}"), sentry::Level::Fatal);
         // Give Sentry a moment to flush the event before the process exits.
         std::thread::sleep(std::time::Duration::from_secs(2));
         return Err(e);
@@ -32,7 +29,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
-
     // Install Prometheus metrics recorder (Issue #423).
     let prometheus_handle = metrics::get_or_install_recorder();
 

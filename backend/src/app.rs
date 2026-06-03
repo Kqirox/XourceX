@@ -1,3 +1,4 @@
+use crate::validation::Path;
 use axum::{
     extract::{Query, State},
     http::HeaderMap,
@@ -6,7 +7,6 @@ use axum::{
     routing::{delete, get, post, put},
     Json, Router,
 };
-use crate::validation::Path;
 use metrics_exporter_prometheus::PrometheusHandle;
 use serde_json::{json, Value};
 use sqlx::PgPool;
@@ -2269,12 +2269,9 @@ async fn get_plan_events(
     Path(plan_id): Path<Uuid>,
     AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<Json<Value>, ApiError> {
-    let events = crate::will_events::WillEventService::get_plan_events(
-        &state.db,
-        plan_id,
-        user.user_id,
-    )
-    .await?;
+    let events =
+        crate::will_events::WillEventService::get_plan_events(&state.db, plan_id, user.user_id)
+            .await?;
     Ok(Json(
         json!({ "status": "success", "data": events, "count": events.len() }),
     ))
@@ -2988,13 +2985,9 @@ async fn get_collateral_value(
         state.db.clone(),
         3600,
     ));
-    let info = CollateralManagementService::get_collateral_value(
-        &state.db,
-        price_feed,
-        id,
-        user.user_id,
-    )
-    .await?;
+    let info =
+        CollateralManagementService::get_collateral_value(&state.db, price_feed, id, user.user_id)
+            .await?;
     Ok(Json(json!({ "status": "success", "data": info })))
 }
 

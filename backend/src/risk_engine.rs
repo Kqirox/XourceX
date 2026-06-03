@@ -3,11 +3,11 @@ use crate::notifications::{
     audit_action, entity_type, notif_type, AuditLogService, NotificationService,
 };
 use crate::price_feed::PriceFeedService;
+use chrono::Utc;
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 use std::sync::Arc;
 use std::time::Duration;
-use chrono::Utc;
 use tracing::{error, info, warn};
 
 pub struct RiskEngine {
@@ -66,7 +66,10 @@ impl RiskEngine {
                             last_seen = ts_opt;
                             if last_seen.is_some() {
                                 if let Err(e) = watcher.check_all_loans().await {
-                                    error!("Risk Engine error recalculating after price update: {}", e);
+                                    error!(
+                                        "Risk Engine error recalculating after price update: {}",
+                                        e
+                                    );
                                 } else {
                                     info!("Risk Engine recalculated health factors after price update.");
                                 }
@@ -107,7 +110,7 @@ impl RiskEngine {
             WHERE (ll.principal - ll.amount_repaid) > 0
               AND ll.status = 'active'
               AND (p.is_paused IS NULL OR p.is_paused = false)
-            "#
+            "#,
         )
         .fetch_all(&self.db)
         .await
@@ -151,9 +154,9 @@ impl RiskEngine {
                 // Determine liquidation threshold based on collateral asset when possible
                 let asset_upper = collat_asset.to_uppercase();
                 let liquidation_threshold_for_asset = match asset_upper.as_str() {
-                    "USDC" => Decimal::new(95, 2), // 0.95
-                    "ETH" | "WETH" => Decimal::new(85, 2), // 0.85
-                    "BTC" | "WBTC" => Decimal::new(85, 2), // 0.85
+                    "USDC" => Decimal::new(95, 2),                // 0.95
+                    "ETH" | "WETH" => Decimal::new(85, 2),        // 0.85
+                    "BTC" | "WBTC" => Decimal::new(85, 2),        // 0.85
                     "XLM" | "STELLAR_XLM" => Decimal::new(80, 2), // 0.80
                     // Fallback to engine-wide threshold if unknown
                     _ => self.liquidation_threshold,

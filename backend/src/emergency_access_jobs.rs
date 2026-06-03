@@ -31,7 +31,9 @@ impl EmergencyAccessJobService {
                     Err(e) => {
                         error!("Error checking expiring emergency access: {}", e);
                         crate::error_tracking::capture_message(
-                            &format!("EmergencyAccessJobService: check_expiring_access failed: {e}"),
+                            &format!(
+                                "EmergencyAccessJobService: check_expiring_access failed: {e}"
+                            ),
                             sentry::Level::Error,
                         );
                     }

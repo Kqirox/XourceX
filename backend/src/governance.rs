@@ -708,7 +708,11 @@ impl GovernanceService {
         .await
         .map_err(|e| ApiError::Internal(anyhow::anyhow!("DB error checking delegation: {}", e)))?;
 
-        let action = if existing.is_some() { "redelegated" } else { "delegated" };
+        let action = if existing.is_some() {
+            "redelegated"
+        } else {
+            "delegated"
+        };
 
         // Upsert the delegation (insert or update on conflict).
         sqlx::query(
@@ -780,7 +784,9 @@ impl GovernanceService {
             .bind(delegator_id)
             .execute(&mut *tx)
             .await
-            .map_err(|e| ApiError::Internal(anyhow::anyhow!("DB error removing delegation: {}", e)))?;
+            .map_err(|e| {
+                ApiError::Internal(anyhow::anyhow!("DB error removing delegation: {}", e))
+            })?;
 
         sqlx::query(
             "INSERT INTO governance_delegation_history (delegator_id, delegate_id, action) VALUES ($1, $2, 'undelegated')",

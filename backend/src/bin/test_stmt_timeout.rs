@@ -3,8 +3,8 @@ use std::time::Instant;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set for this test");
+    let database_url =
+        std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for this test");
 
     // Create pool using env-configured settings (including DB_POOL_QUERY_TIMEOUT_SECS).
     let pool = db::create_pool(&database_url).await?;

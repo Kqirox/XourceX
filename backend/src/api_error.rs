@@ -79,7 +79,7 @@ pub enum ApiError {
     PayloadTooLarge(String),
 
     /// Client has exceeded the configured rate limit for the endpoint.
-    #[error("Rate limit exceeded. Please slow down and retry after the indicated period.")]
+    #[error("Rate limit exceeded: {0}")]
     TooManyRequests(String),
 }
 
@@ -194,10 +194,7 @@ impl IntoResponse for ApiError {
             }
             Self::Timeout => {
                 tracing::warn!(error_code = "TIMEOUT", "Request timeout");
-                crate::error_tracking::capture_message(
-                    "Request timed out",
-                    sentry::Level::Warning,
-                );
+                crate::error_tracking::capture_message("Request timed out", sentry::Level::Warning);
                 (StatusCode::GATEWAY_TIMEOUT, self.to_string())
             }
             Self::ServiceUnavailable(msg) => {

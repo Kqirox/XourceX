@@ -32,7 +32,9 @@ impl LendingDataWarehouseService {
                     Err(e) => {
                         error!("Lending data warehouse snapshot failed: {}", e);
                         crate::error_tracking::capture_message(
-                            &format!("LendingDataWarehouseService::snapshot_current_metrics failed: {e}"),
+                            &format!(
+                                "LendingDataWarehouseService::snapshot_current_metrics failed: {e}"
+                            ),
                             sentry::Level::Error,
                         );
                     }

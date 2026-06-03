@@ -1,11 +1,11 @@
 use crate::api_error::ApiError;
+use crate::events::{EventType, LendingEvent};
 use crate::external_integrations::{
     AnchorIntegrationClient, ComplianceApiClient, SanctionsApiClient,
 };
 use crate::notifications::{
     audit_action, entity_type, notif_type, AuditLogService, NotificationService,
 };
-use crate::events::{EventType, LendingEvent};
 use async_trait::async_trait;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use once_cell::sync::OnceCell;
@@ -23,7 +23,8 @@ const ALERT_COOLDOWN_WINDOW: Duration = Duration::from_secs(300);
 const EVENT_COMMIT_POLL_INTERVAL: Duration = Duration::from_millis(200);
 const EVENT_COMMIT_MAX_RETRIES: usize = 5;
 
-static REALTIME_COMPLIANCE_LISTENER: OnceCell<Arc<dyn RealtimeComplianceListener>> = OnceCell::new();
+static REALTIME_COMPLIANCE_LISTENER: OnceCell<Arc<dyn RealtimeComplianceListener>> =
+    OnceCell::new();
 
 #[async_trait]
 pub trait RealtimeComplianceListener: Send + Sync {
@@ -158,12 +159,11 @@ impl ComplianceEngine {
 
     async fn wait_for_event_commit(&self, event_id: Uuid) -> Result<bool, ApiError> {
         for _ in 0..EVENT_COMMIT_MAX_RETRIES {
-            let exists: Option<bool> = sqlx::query_scalar(
-                "SELECT true FROM lending_events WHERE id = $1",
-            )
-            .bind(event_id)
-            .fetch_optional(&self.db)
-            .await?;
+            let exists: Option<bool> =
+                sqlx::query_scalar("SELECT true FROM lending_events WHERE id = $1")
+                    .bind(event_id)
+                    .fetch_optional(&self.db)
+                    .await?;
 
             if exists.is_some() {
                 return Ok(true);
@@ -263,12 +263,11 @@ impl ComplianceEngine {
             None => return Ok(()),
         };
 
-        let plan_created_at: Option<DateTime<Utc>> = sqlx::query_scalar(
-            "SELECT created_at FROM plans WHERE id = $1",
-        )
-        .bind(plan_id)
-        .fetch_optional(&self.db)
-        .await?;
+        let plan_created_at: Option<DateTime<Utc>> =
+            sqlx::query_scalar("SELECT created_at FROM plans WHERE id = $1")
+                .bind(plan_id)
+                .fetch_optional(&self.db)
+                .await?;
 
         let plan_created_at = match plan_created_at {
             Some(created_at) => created_at,
@@ -719,11 +718,11 @@ impl RealtimeComplianceListener for ComplianceEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rust_decimal_macros::dec;
-    use sqlx::PgPool;
     use anyhow::anyhow;
     use chrono::Utc;
+    use rust_decimal_macros::dec;
     use serde_json::json;
+    use sqlx::PgPool;
     use std::sync::Arc;
     use std::time::Duration;
     use tokio::sync::{oneshot, Mutex};

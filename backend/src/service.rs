@@ -459,13 +459,12 @@ impl PlanService {
     where
         E: sqlx::Executor<'a, Database = sqlx::Postgres>,
     {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM plans WHERE id = $1 AND user_id = $2)",
-        )
-        .bind(plan_id)
-        .bind(user_id)
-        .fetch_one(executor)
-        .await?;
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM plans WHERE id = $1 AND user_id = $2)")
+                .bind(plan_id)
+                .bind(user_id)
+                .fetch_one(executor)
+                .await?;
 
         if !exists {
             return Err(ApiError::NotFound(format!("Plan {plan_id} not found")));
@@ -1600,11 +1599,7 @@ impl RevenueMetricsService {
             "#,
         );
 
-        let rows = rows
-            .bind(trunc)
-            .bind(interval)
-            .fetch_all(pool)
-            .await?;
+        let rows = rows.bind(trunc).bind(interval).fetch_all(pool).await?;
 
         let data = rows
             .into_iter()
@@ -4172,7 +4167,7 @@ impl EmergencyAccessMetricsService {
             _ => ("30 days", "day"), // default to daily
         };
 
-        let trend_rows: Vec<(String, i64)> = sqlx::query_as(
+        let trend_rows: Vec<(String, i64)> = sqlx::query_as::<_, (String, i64)>(
             r#"
             SELECT 
                 DATE_TRUNC($1, created_at)::DATE::TEXT as date,
@@ -4182,13 +4177,11 @@ impl EmergencyAccessMetricsService {
             GROUP BY 1
             ORDER BY 1
             "#,
-        );
-
-        let trend_rows: Vec<(String, i64)> = trend_rows
-            .bind(trunc)
-            .bind(interval)
-            .fetch_all(db)
-            .await?;
+        )
+        .bind(trunc)
+        .bind(interval)
+        .fetch_all(db)
+        .await?;
 
         let grant_trend = trend_rows
             .into_iter()

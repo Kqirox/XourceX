@@ -54,14 +54,13 @@ async fn rotate_csrf_token(
     db: &sqlx::PgPool,
     old_token: &str,
 ) -> Result<(String, chrono::DateTime<chrono::Utc>), ()> {
-    let user_id: Option<Uuid> = sqlx::query_scalar(
-        "SELECT user_id FROM csrf_tokens WHERE token = $1 AND used = FALSE",
-    )
-    .bind(old_token)
-    .fetch_optional(db)
-    .await
-    .map_err(|_| ())?
-    .ok_or(())?;
+    let user_id: Option<Uuid> =
+        sqlx::query_scalar("SELECT user_id FROM csrf_tokens WHERE token = $1 AND used = FALSE")
+            .bind(old_token)
+            .fetch_optional(db)
+            .await
+            .map_err(|_| ())?
+            .ok_or(())?;
 
     let new_token = generate_csrf_token();
     let expires_at = Utc::now() + Duration::minutes(60);

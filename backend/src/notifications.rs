@@ -167,10 +167,7 @@ impl NotificationService {
     }
 
     /// Mark notification as delivered.
-    pub async fn mark_delivered(
-        db: &PgPool,
-        notif_id: Uuid,
-    ) -> Result<(), ApiError> {
+    pub async fn mark_delivered(db: &PgPool, notif_id: Uuid) -> Result<(), ApiError> {
         sqlx::query(
             r#"
             UPDATE notifications
@@ -186,10 +183,7 @@ impl NotificationService {
     }
 
     /// Increment delivery attempts for a notification.
-    pub async fn increment_delivery_attempts(
-        db: &PgPool,
-        notif_id: Uuid,
-    ) -> Result<(), ApiError> {
+    pub async fn increment_delivery_attempts(db: &PgPool, notif_id: Uuid) -> Result<(), ApiError> {
         sqlx::query(
             r#"
             UPDATE notifications
@@ -209,10 +203,7 @@ impl NotificationService {
     }
 
     /// Fetch undelivered notifications for retry.
-    pub async fn list_undelivered(
-        db: &PgPool,
-        limit: i64,
-    ) -> Result<Vec<Notification>, ApiError> {
+    pub async fn list_undelivered(db: &PgPool, limit: i64) -> Result<Vec<Notification>, ApiError> {
         let rows = sqlx::query_as::<_, Notification>(
             r#"
             SELECT id, user_id, type, message, is_read, delivery_status, delivery_attempts, created_at
@@ -619,6 +610,8 @@ mod tests {
             notif_type: notif_type::KYC_APPROVED.to_string(),
             message: "Approved!".to_string(),
             is_read: false,
+            delivery_status: None,
+            delivery_attempts: None,
             created_at: Utc::now(),
         };
         let json = serde_json::to_value(&n).unwrap();
@@ -640,6 +633,8 @@ mod tests {
             notif_type: notif_type::PLAN_CREATED.to_string(),
             message: "Plan created".to_string(),
             is_read: false,
+            delivery_status: None,
+            delivery_attempts: None,
             created_at: Utc::now(),
         };
         assert!(!n.is_read);
@@ -657,6 +652,7 @@ mod tests {
             old_value: None,
             new_value: None,
             metadata: None,
+            sequence_number: None,
             timestamp: Utc::now(),
         };
         let json = serde_json::to_value(&log).unwrap();
@@ -676,6 +672,7 @@ mod tests {
             old_value: None,
             new_value: None,
             metadata: None,
+            sequence_number: None,
             timestamp: Utc::now(),
         };
         let json = serde_json::to_value(&log).unwrap();
