@@ -1380,10 +1380,7 @@ impl BorrowingContract {
             .set(&DataKey::OraclePriceTimestamp(token.clone()), &timestamp);
         env.events().publish(
             (symbol_short!("ORACLE"), symbol_short!("UPDATE")),
-            OracleUpdatedEvent {
-                token,
-                timestamp,
-            },
+            OracleUpdatedEvent { token, timestamp },
         );
         Ok(())
     }

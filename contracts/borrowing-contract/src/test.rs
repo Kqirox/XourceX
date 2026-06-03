@@ -1,7 +1,10 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::{Address as _, Ledger as _}, token, Address, Env};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger as _},
+    token, Address, Env,
+};
 
 fn create_token_addr(env: &Env) -> Address {
     let admin = Address::generate(env);
