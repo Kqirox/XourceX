@@ -1,5 +1,9 @@
 #![no_std]
 use access_control::{self, Role};
+use genetic_verification::{
+    is_valid_risk_score, DNAVerificationStatus, GeneticCondition, GeneticInheritance,
+    GeneticTriggerConfig, GeneticTriggerType,
+};
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, log, symbol_short, token, vec, Address,
     Bytes, BytesN, Env, FromVal, IntoVal, InvokeError, String, Symbol, Val, Vec,
@@ -753,10 +757,11 @@ impl InheritanceContract {
 
     // Hash utility functions
     pub fn hash_string(env: &Env, input: String) -> BytesN<32> {
-        let mut data = Bytes::new(env);
-        for i in 0..input.len() {
-            data.push_back(input.get(i).unwrap_or(0));
-        }
+        let len = input.len() as usize;
+        let mut buf = [0u8; 512];
+        let slice = &mut buf[..len.min(512)];
+        input.copy_into_slice(slice);
+        let data = Bytes::from_slice(env, slice);
         env.crypto().sha256(&data).into()
     }
 
@@ -925,7 +930,7 @@ impl InheritanceContract {
         let list: Vec<Address> = env
             .storage()
             .persistent()
-            .get(&DataKey::Arbitrators)
+            .get(&DataKey::PlanMetadata(0, 6000))
             .unwrap_or(Vec::new(env));
         for a in list.iter() {
             if a == *who {
@@ -944,7 +949,7 @@ impl InheritanceContract {
         let mut list: Vec<Address> = env
             .storage()
             .persistent()
-            .get(&DataKey::Arbitrators)
+            .get(&DataKey::PlanMetadata(0, 6000))
             .unwrap_or(Vec::new(&env));
         for a in list.iter() {
             if a == arbitrator {
@@ -952,7 +957,9 @@ impl InheritanceContract {
             }
         }
         list.push_back(arbitrator);
-        env.storage().persistent().set(&DataKey::Arbitrators, &list);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PlanMetadata(0, 6000), &list);
         Ok(())
     }
 
@@ -965,7 +972,7 @@ impl InheritanceContract {
         let list: Vec<Address> = env
             .storage()
             .persistent()
-            .get(&DataKey::Arbitrators)
+            .get(&DataKey::PlanMetadata(0, 6000))
             .unwrap_or(Vec::new(&env));
         let mut updated: Vec<Address> = Vec::new(&env);
         for a in list.iter() {
@@ -975,14 +982,14 @@ impl InheritanceContract {
         }
         env.storage()
             .persistent()
-            .set(&DataKey::Arbitrators, &updated);
+            .set(&DataKey::PlanMetadata(0, 6000), &updated);
         Ok(())
     }
 
     pub fn get_arbitrators(env: Env) -> Vec<Address> {
         env.storage()
             .persistent()
-            .get(&DataKey::Arbitrators)
+            .get(&DataKey::PlanMetadata(0, 6000))
             .unwrap_or(Vec::new(&env))
     }
 
@@ -1001,14 +1008,14 @@ impl InheritanceContract {
         let dispute_id = env
             .storage()
             .persistent()
-            .get(&DataKey::NextDisputeId)
+            .get(&DataKey::PlanMetadata(0, 5002))
             .unwrap_or(0u64);
 
         let mut arbitrator = Self::get_admin(&env).ok_or(InheritanceError::AdminNotSet)?;
         let list: Vec<Address> = env
             .storage()
             .persistent()
-            .get(&DataKey::Arbitrators)
+            .get(&DataKey::PlanMetadata(0, 6000))
             .unwrap_or(Vec::new(&env));
         if list.len() > 0 {
             arbitrator = list.get(0).unwrap();
@@ -1022,27 +1029,27 @@ impl InheritanceContract {
             status: DisputeStatus::Filed,
             filed_at: env.ledger().timestamp(),
             resolved_at: 0,
-            resolution_notes: String::new(&env),
+            resolution_notes: String::from_str(&env, ""),
             arbitrator,
         };
 
         env.storage()
             .persistent()
-            .set(&DataKey::Dispute(dispute_id), &record);
+            .set(&DataKey::PlanMetadata(dispute_id, 5000), &record);
 
         let mut plan_disputes: Vec<u64> = env
             .storage()
             .persistent()
-            .get(&DataKey::PlanDisputes(plan_id))
+            .get(&DataKey::PlanMetadata(plan_id, 5001))
             .unwrap_or(Vec::new(&env));
         plan_disputes.push_back(dispute_id);
         env.storage()
             .persistent()
-            .set(&DataKey::PlanDisputes(plan_id), &plan_disputes);
+            .set(&DataKey::PlanMetadata(plan_id, 5001), &plan_disputes);
 
         env.storage()
             .persistent()
-            .set(&DataKey::NextDisputeId, &(dispute_id + 1));
+            .set(&DataKey::PlanMetadata(0, 5002), &(dispute_id + 1));
 
         env.events().publish(
             (symbol_short!("DSPT"), symbol_short!("FILED")),
@@ -1061,13 +1068,13 @@ impl InheritanceContract {
     pub fn get_dispute(env: Env, dispute_id: u64) -> Option<DisputeRecord> {
         env.storage()
             .persistent()
-            .get(&DataKey::Dispute(dispute_id))
+            .get(&DataKey::PlanMetadata(dispute_id, 5000))
     }
 
     pub fn get_plan_disputes(env: Env, plan_id: u64) -> Vec<u64> {
         env.storage()
             .persistent()
-            .get(&DataKey::PlanDisputes(plan_id))
+            .get(&DataKey::PlanMetadata(plan_id, 5001))
             .unwrap_or(Vec::new(&env))
     }
 
@@ -1085,18 +1092,18 @@ impl InheritanceContract {
         let mut record: DisputeRecord = env
             .storage()
             .persistent()
-            .get(&DataKey::Dispute(dispute_id))
-            .ok_or(InheritanceError::DisputeNotFound)?;
+            .get(&DataKey::PlanMetadata(dispute_id, 5000))
+            .ok_or(InheritanceError::PlanNotFound)?;
 
         let is_admin = Self::get_admin(&env)
             .map(|a| a == arbitrator)
             .unwrap_or(false);
         if !is_admin && !Self::is_arbitrator(&env, &arbitrator) {
-            return Err(InheritanceError::NotArbitrator);
+            return Err(InheritanceError::NotAdmin);
         }
 
         if record.status == DisputeStatus::Resolved || record.status == DisputeStatus::Rejected {
-            return Err(InheritanceError::DisputeAlreadyResolved);
+            return Err(InheritanceError::AlreadyClaimed);
         }
 
         record.status = new_status.clone();
@@ -1107,7 +1114,7 @@ impl InheritanceContract {
 
         env.storage()
             .persistent()
-            .set(&DataKey::Dispute(dispute_id), &record);
+            .set(&DataKey::PlanMetadata(dispute_id, 5000), &record);
 
         if freeze_plan {
             let fr = FreezeRecord {
@@ -1571,6 +1578,8 @@ impl InheritanceContract {
         // Create the beneficiary (validates inputs and hashes sensitive data)
         let beneficiary = Self::create_beneficiary(
             &env,
+            plan_id,
+            plan.beneficiaries.len(),
             beneficiary_input.name,
             beneficiary_input.email.clone(),
             beneficiary_input.claim_code,
@@ -2169,7 +2178,7 @@ impl InheritanceContract {
 
     /// Get vesting exit settlement amount for a beneficiary
     fn get_vesting_exit_settlement(env: &Env, plan_id: u64, beneficiary_index: u32) -> u64 {
-        let settle_key = DataKey::VestingExitSettlement(plan_id, beneficiary_index);
+        let settle_key = DataKey::PlanMetadata(plan_id, 3000 + beneficiary_index);
         env.storage().persistent().get(&settle_key).unwrap_or(0u64)
     }
 
@@ -2299,7 +2308,7 @@ impl InheritanceContract {
             .get::<DataKey, bool>(&DataKey::PlanMetadata(plan_id, index))
             .unwrap_or(false)
         {
-            return Err(InheritanceError::BeneficiaryFrozen);
+            return Err(InheritanceError::PlanNotActive);
         }
 
         if Self::has_active_vesting_schedule(&env, plan_id, index) {
@@ -2381,7 +2390,7 @@ impl InheritanceContract {
         Self::store_plan(&env, plan_id, &updated_plan);
 
         if exit_settlement > 0 {
-            let settle_key = DataKey::VestingExitSettlement(plan_id, index);
+            let settle_key = DataKey::PlanMetadata(plan_id, 3000 + index);
             if exit_remaining_after == 0 {
                 env.storage().persistent().remove(&settle_key);
             } else {
@@ -3098,7 +3107,7 @@ impl InheritanceContract {
             .unwrap_or(Vec::new(&env));
 
         if !user_plans.contains(plan_id) {
-            return Err(InheritanceError::PlanNotClaimed);
+            return Err(InheritanceError::PlanNotFound);
         }
 
         Ok(plan)
@@ -3164,13 +3173,13 @@ impl InheritanceContract {
     fn get_trigger_config(env: &Env, plan_id: u64) -> Option<TriggerConfig> {
         env.storage()
             .persistent()
-            .get(&DataKey::TriggerConditions(plan_id))
+            .get(&DataKey::PlanMetadata(plan_id, 4000))
     }
 
     fn save_trigger_config(env: &Env, plan_id: u64, config: &TriggerConfig) {
         env.storage()
             .persistent()
-            .set(&DataKey::TriggerConditions(plan_id), config);
+            .set(&DataKey::PlanMetadata(plan_id, 4000), config);
     }
 
     pub fn check_trigger_conditions(env: Env, plan_id: u64) -> bool {
@@ -3523,7 +3532,6 @@ impl InheritanceContract {
         plan_id: u64,
     ) -> Result<(), InheritanceError> {
         Self::check_not_paused(&env);
-        Self::enter_guard(&env);
         // Authorization check: Admin OR Owner OR Trusted Contact with active emergency access
         let mut is_authorized = false;
 
@@ -3553,9 +3561,15 @@ impl InheritanceContract {
             return Err(InheritanceError::Unauthorized);
         }
 
-        let mut plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
+        Self::execute_inheritance_trigger(&env, plan_id)
+    }
+
+    fn execute_inheritance_trigger(env: &Env, plan_id: u64) -> Result<(), InheritanceError> {
+        Self::enter_guard(env);
+        let mut plan = Self::get_plan(env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
 
         if !plan.is_active {
+            Self::exit_guard(env);
             return Err(InheritanceError::PlanNotActive);
         }
 
@@ -3565,6 +3579,7 @@ impl InheritanceContract {
             .persistent()
             .has(&DataKey::PlanMetadata(plan_id, 200))
         {
+            Self::exit_guard(env);
             return Err(InheritanceError::PlanNotActive);
         }
         if env
@@ -3572,11 +3587,13 @@ impl InheritanceContract {
             .persistent()
             .has(&DataKey::PlanMetadata(plan_id, 201))
         {
+            Self::exit_guard(env);
             return Err(InheritanceError::PlanNotActive);
         }
 
         // Check if already triggered
-        if Self::get_trigger_info(&env, plan_id).is_some() {
+        if Self::get_trigger_info(env, plan_id).is_some() {
+            Self::exit_guard(env);
             return Err(InheritanceError::InheritanceAlreadyTriggered);
         }
 
@@ -3584,7 +3601,7 @@ impl InheritanceContract {
 
         // Freeze new loans by setting is_lendable to false
         plan.is_lendable = false;
-        Self::store_plan(&env, plan_id, &plan);
+        Self::store_plan(env, plan_id, &plan);
 
         // Create trigger info
         let trigger_info = InheritanceTriggerInfo {
@@ -3596,7 +3613,7 @@ impl InheritanceContract {
             recalled_amount: 0,
             settled_amount: 0,
         };
-        Self::set_trigger_info(&env, plan_id, &trigger_info);
+        Self::set_trigger_info(env, plan_id, &trigger_info);
 
         // Emit events
         env.events().publish(
@@ -3617,13 +3634,13 @@ impl InheritanceContract {
         );
 
         log!(
-            &env,
+            env,
             "Inheritance triggered for plan {} — loans frozen, outstanding: {}",
             plan_id,
             plan.total_loaned
         );
 
-        Self::exit_guard(&env);
+        Self::exit_guard(env);
         Ok(())
     }
 
@@ -3656,8 +3673,8 @@ impl InheritanceContract {
 
         let mut plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
 
-        let mut trigger_info = Self::get_trigger_info(&env, plan_id)
-            .ok_or(InheritanceError::InheritanceNotTriggered)?;
+        let mut trigger_info =
+            Self::get_trigger_info(&env, plan_id).ok_or(InheritanceError::ClaimNotAllowedYet)?;
 
         if plan.total_loaned == 0 {
             return Err(InheritanceError::InsufficientBalance);
@@ -3723,8 +3740,8 @@ impl InheritanceContract {
 
         let mut plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
 
-        let mut trigger_info = Self::get_trigger_info(&env, plan_id)
-            .ok_or(InheritanceError::InheritanceNotTriggered)?;
+        let mut trigger_info =
+            Self::get_trigger_info(&env, plan_id).ok_or(InheritanceError::ClaimNotAllowedYet)?;
 
         if plan.total_loaned == 0 {
             return Err(InheritanceError::InsufficientBalance);
@@ -3930,7 +3947,7 @@ impl InheritanceContract {
     ) -> Result<(), InheritanceError> {
         owner.require_auth();
 
-        let plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::VaultNotFound)?;
+        let plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
         if plan.owner != owner {
             return Err(InheritanceError::Unauthorized);
         }
@@ -3942,7 +3959,7 @@ impl InheritanceContract {
             .get::<_, BytesN<32>>(&key)
             .is_some()
         {
-            return Err(InheritanceError::WillAlreadyLinked);
+            return Err(InheritanceError::AlreadyClaimed);
         }
 
         env.storage().persistent().set(&key, &will_hash);
@@ -4038,7 +4055,7 @@ impl InheritanceContract {
                 .get::<_, bool>(&fin_key)
                 .unwrap_or(false)
             {
-                return Err(InheritanceError::WillAlreadyFinalized);
+                return Err(InheritanceError::AlreadyClaimed);
             }
         }
 
@@ -4146,19 +4163,19 @@ impl InheritanceContract {
 
         // Validate signature expiration
         if env.ledger().timestamp() > expires_at {
-            return Err(InheritanceError::SignatureExpired);
+            return Err(InheritanceError::ClaimNotAllowedYet);
         }
 
         // Replay protection: check signature hash in SignatureUsed map
         let sig_hash = env.crypto().sha256(&signature.clone().into());
-        let used_key = DataKey::SignatureUsed(sig_hash.clone());
+        let used_key = DataKey::SignatureUsed(sig_hash.clone().into());
         if env
             .storage()
             .persistent()
             .get::<_, bool>(&used_key)
             .unwrap_or(false)
         {
-            return Err(InheritanceError::WillAlreadyFinalized);
+            return Err(InheritanceError::AlreadyClaimed);
         }
 
         // Mark signature as used
@@ -4169,7 +4186,7 @@ impl InheritanceContract {
             vault_id,
             will_hash,
             signer: owner.clone(),
-            sig_hash,
+            sig_hash: sig_hash.into(),
             signed_at: env.ledger().timestamp(),
         };
         env.storage()
@@ -4217,19 +4234,20 @@ impl InheritanceContract {
         let current: u32 = env
             .storage()
             .persistent()
-            .get(&DataKey::VaultKeyVersion(vault_id))
+            .get(&DataKey::PlanMetadata(vault_id, 2000))
             .unwrap_or(0u32);
         let next = current.saturating_add(1);
 
+        env.storage().persistent().set(
+            &DataKey::PlanMetadata(vault_id, 10000 + next),
+            &new_key_reference,
+        );
         env.storage()
             .persistent()
-            .set(&DataKey::VaultKeyRef(vault_id, next), &new_key_reference);
+            .set(&DataKey::PlanMetadata(vault_id, 2000), &next);
         env.storage()
             .persistent()
-            .set(&DataKey::VaultKeyVersion(vault_id), &next);
-        env.storage()
-            .persistent()
-            .set(&DataKey::VaultCurrentKey(vault_id), &next);
+            .set(&DataKey::PlanMetadata(vault_id, 2001), &next);
 
         env.events().publish(
             (symbol_short!("KEY"), symbol_short!("ROTATE")),
@@ -4243,17 +4261,17 @@ impl InheritanceContract {
         let ver: u32 = env
             .storage()
             .persistent()
-            .get(&DataKey::VaultCurrentKey(vault_id))
+            .get(&DataKey::PlanMetadata(vault_id, 2001))
             .unwrap_or(0u32);
         env.storage()
             .persistent()
-            .get(&DataKey::VaultKeyRef(vault_id, ver))
+            .get(&DataKey::PlanMetadata(vault_id, 10000 + ver))
     }
 
     pub fn get_vault_message_key_version(env: Env, vault_id: u64) -> u32 {
         env.storage()
             .persistent()
-            .get(&DataKey::VaultCurrentKey(vault_id))
+            .get(&DataKey::PlanMetadata(vault_id, 2001))
             .unwrap_or(0u32)
     }
 
@@ -4299,13 +4317,13 @@ impl InheritanceContract {
             let ver: u32 = env
                 .storage()
                 .persistent()
-                .get(&DataKey::VaultCurrentKey(params.vault_id))
+                .get(&DataKey::PlanMetadata(params.vault_id, 2001))
                 .unwrap_or(0u32);
             key_ref = env
                 .storage()
                 .persistent()
-                .get(&DataKey::VaultKeyRef(params.vault_id, ver))
-                .unwrap_or(String::new(&env));
+                .get(&DataKey::PlanMetadata(params.vault_id, 10000 + ver))
+                .unwrap_or(String::from_str(&env, ""));
         }
 
         // Create message metadata
@@ -4374,7 +4392,7 @@ impl InheritanceContract {
         }
 
         if message.is_finalized {
-            return Err(InheritanceError::WillAlreadyFinalized);
+            return Err(InheritanceError::AlreadyClaimed);
         }
 
         if message.is_unlocked {
@@ -4418,7 +4436,7 @@ impl InheritanceContract {
         }
 
         if message.is_finalized {
-            return Err(InheritanceError::WillAlreadyFinalized);
+            return Err(InheritanceError::AlreadyClaimed);
         }
 
         message.is_finalized = true;
@@ -4490,7 +4508,7 @@ impl InheritanceContract {
         }
 
         if message.is_finalized {
-            return Err(InheritanceError::WillAlreadyFinalized);
+            return Err(InheritanceError::AlreadyClaimed);
         }
 
         // Remove message metadata
@@ -4650,10 +4668,10 @@ impl InheritanceContract {
             .storage()
             .persistent()
             .get(&DataKey::InheritanceTrigger(vault_id))
-            .ok_or(InheritanceError::InheritanceNotTriggered)?;
+            .ok_or(InheritanceError::ClaimNotAllowedYet)?;
 
         if trigger_info.triggered_at == 0 {
-            return Err(InheritanceError::InheritanceNotTriggered);
+            return Err(InheritanceError::ClaimNotAllowedYet);
         }
 
         // Get all messages for this vault
@@ -4720,7 +4738,7 @@ impl InheritanceContract {
         env.storage()
             .persistent()
             .get::<_, WillVersionInfo>(&ver_key)
-            .ok_or(InheritanceError::WillVersionNotFound)?;
+            .ok_or(InheritanceError::PlanNotFound)?;
 
         // Atomic finalization guard: set the flag first to prevent concurrent finalization.
         let fin_key = DataKey::PlanMetadata(vault_id, version);
@@ -4730,7 +4748,7 @@ impl InheritanceContract {
             .get::<_, bool>(&fin_key)
             .unwrap_or(false)
         {
-            return Err(InheritanceError::WillAlreadyFinalized);
+            return Err(InheritanceError::AlreadyClaimed);
         }
         // Mark finalized immediately so any concurrent call sees it and returns early.
         env.storage().persistent().set(&fin_key, &true);
@@ -4743,7 +4761,7 @@ impl InheritanceContract {
             .is_none()
         {
             env.storage().persistent().remove(&fin_key);
-            return Err(InheritanceError::WillNotVerified);
+            return Err(InheritanceError::PlanNotActive);
         }
 
         // All assigned witnesses must have signed
@@ -4873,24 +4891,24 @@ impl InheritanceContract {
             }
         }
         if !found {
-            return Err(InheritanceError::EmergencyContactNotFound);
+            return Err(InheritanceError::BeneficiaryNotFound);
         }
 
         // Validate signature expiration
         if env.ledger().timestamp() > expires_at {
-            return Err(InheritanceError::SignatureExpired);
+            return Err(InheritanceError::ClaimNotAllowedYet);
         }
 
         // Replay protection: check signature hash in SignatureUsed map
         let sig_hash = env.crypto().sha256(&signature.clone().into());
-        let used_key = DataKey::SignatureUsed(sig_hash.clone());
+        let used_key = DataKey::SignatureUsed(sig_hash.clone().into());
         if env
             .storage()
             .persistent()
             .get::<_, bool>(&used_key)
             .unwrap_or(false)
         {
-            return Err(InheritanceError::AlreadyApproved);
+            return Err(InheritanceError::AlreadyClaimed);
         }
 
         // Prevent double-signing
@@ -4901,7 +4919,7 @@ impl InheritanceContract {
             .get::<_, u64>(&wsig_key)
             .is_some()
         {
-            return Err(InheritanceError::AlreadyApproved);
+            return Err(InheritanceError::AlreadyClaimed);
         }
 
         // Mark signature as used
@@ -5444,7 +5462,7 @@ impl InheritanceContract {
         Self::require_admin(&env, &admin)?;
         env.storage()
             .instance()
-            .set(&DataKey::PlanMetadata(contract, 1), &contract);
+            .set(&DataKey::PlanMetadata(0, 1), &contract);
         env.events().publish(
             (symbol_short!("LINK"), symbol_short!("LEND")),
             ContractLinkedEvent {
@@ -5483,42 +5501,41 @@ impl InheritanceContract {
     }
 
     fn require_lending_contract(env: &Env) -> Result<Address, InheritanceError> {
-        Self::get_lending_contract(env.clone()).ok_or(InheritanceError::LendingContractNotSet)
+        Self::get_lending_contract(env.clone()).ok_or(InheritanceError::AdminNotSet)
     }
 
     fn require_governance_contract(env: &Env) -> Result<Address, InheritanceError> {
-        Self::get_governance_contract(env.clone()).ok_or(InheritanceError::GovernanceContractNotSet)
+        Self::get_governance_contract(env.clone()).ok_or(InheritanceError::AdminNotSet)
     }
 
-    fn invoke_lending_contract<R: FromVal<Env>>(
+    fn invoke_lending_contract<R: soroban_sdk::TryFromVal<Env, Val>>(
         env: &Env,
         method: Symbol,
         args: Vec<Val>,
     ) -> Result<R, InheritanceError> {
         let contract = Self::require_lending_contract(env)?;
-        env.try_invoke_contract::<R, InvokeError>(&contract, &method, args)
-            .map_err(|err| {
-                log!(&env, "Lending contract call failed: {:?} {:?}", method, err);
-                InheritanceError::LendingContractCallFailed
-            })
+        match env.try_invoke_contract::<R, InvokeError>(&contract, &method, args) {
+            Ok(Ok(val)) => Ok(val),
+            _ => {
+                log!(&env, "Lending contract call failed");
+                Err(InheritanceError::PlanNotActive)
+            }
+        }
     }
 
-    fn invoke_governance_contract<R: FromVal<Env>>(
+    fn invoke_governance_contract<R: soroban_sdk::TryFromVal<Env, Val>>(
         env: &Env,
         method: Symbol,
         args: Vec<Val>,
     ) -> Result<R, InheritanceError> {
         let contract = Self::require_governance_contract(env)?;
-        env.try_invoke_contract::<R, InvokeError>(&contract, &method, args)
-            .map_err(|err| {
-                log!(
-                    &env,
-                    "Governance contract call failed: {:?} {:?}",
-                    method,
-                    err
-                );
-                InheritanceError::GovernanceContractCallFailed
-            })
+        match env.try_invoke_contract::<R, InvokeError>(&contract, &method, args) {
+            Ok(Ok(val)) => Ok(val),
+            _ => {
+                log!(&env, "Governance contract call failed");
+                Err(InheritanceError::PlanNotActive)
+            }
+        }
     }
 
     pub fn verify_plan_ownership(env: Env, plan_id: u64, user: Address) -> bool {
@@ -5550,9 +5567,9 @@ impl InheritanceContract {
             return Err(InheritanceError::InvalidBeneficiaryIndex);
         }
 
-        let notif_key = DataKey::PlanMetadata(plan_id, beneficiary_index);
+        let notif_key = DataKey::PlanMetadata(plan_id, beneficiary_index * 2);
         if env.storage().instance().has(&notif_key) {
-            return Err(InheritanceError::AlreadyApproved);
+            return Err(InheritanceError::AlreadyClaimed);
         }
 
         let now = env.ledger().timestamp();
@@ -5588,14 +5605,14 @@ impl InheritanceContract {
         }
 
         // Notification must have been sent before acknowledgment is possible
-        let notif_key = DataKey::PlanMetadata(plan_id, beneficiary_index);
+        let notif_key = DataKey::PlanMetadata(plan_id, beneficiary_index * 2);
         if !env.storage().instance().has(&notif_key) {
             return Err(InheritanceError::ClaimNotAllowedYet);
         }
 
-        let ack_key = DataKey::PlanMetadata(plan_id, beneficiary_index);
+        let ack_key = DataKey::PlanMetadata(plan_id, beneficiary_index * 2 + 1);
         if env.storage().instance().has(&ack_key) {
-            return Err(InheritanceError::AlreadyApproved);
+            return Err(InheritanceError::AlreadyClaimed);
         }
 
         let now = env.ledger().timestamp();
@@ -5619,10 +5636,10 @@ impl InheritanceContract {
         plan_id: u64,
         beneficiary_index: u32,
     ) -> Option<BeneficiaryAcknowledgment> {
-        let notif_key = DataKey::PlanMetadata(plan_id, beneficiary_index);
+        let notif_key = DataKey::PlanMetadata(plan_id, beneficiary_index * 2);
         let notification_sent_at: u64 = env.storage().instance().get(&notif_key)?;
 
-        let ack_key = DataKey::PlanMetadata(plan_id, beneficiary_index);
+        let ack_key = DataKey::PlanMetadata(plan_id, beneficiary_index * 2 + 1);
         let acknowledged_at: u64 = env.storage().instance().get(&ack_key).unwrap_or(0);
 
         Some(BeneficiaryAcknowledgment {
@@ -5666,9 +5683,9 @@ impl InheritanceContract {
         let mut unacknowledged: Vec<u32> = Vec::new(&env);
 
         for idx in 0..plan.beneficiaries.len() {
-            let notif_key = DataKey::PlanMetadata(plan_id, idx);
+            let notif_key = DataKey::PlanMetadata(plan_id, idx * 2);
             if env.storage().instance().has(&notif_key) {
-                let ack_key = DataKey::PlanMetadata(plan_id, idx);
+                let ack_key = DataKey::PlanMetadata(plan_id, idx * 2 + 1);
                 if !env.storage().instance().has(&ack_key) {
                     unacknowledged.push_back(idx);
                 }
@@ -5778,6 +5795,157 @@ impl InheritanceContract {
             owner,
             new_owner
         );
+
+        Ok(())
+    }
+
+    /// Add a genetic health trigger to an inheritance plan.
+    /// Only the plan owner or admin may call this.
+    pub fn add_genetic_trigger(
+        env: Env,
+        caller: Address,
+        plan_id: u64,
+        trigger: GeneticTriggerConfig,
+    ) -> Result<(), InheritanceError> {
+        caller.require_auth();
+
+        let plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
+        if plan.owner != caller {
+            Self::require_admin(&env, &caller)?;
+        }
+
+        // Validate trigger config parameters
+        if trigger.trigger_type == GeneticTriggerType::RiskFactorExceeded {
+            if !is_valid_risk_score(trigger.threshold_value) {
+                return Err(InheritanceError::InvalidAllocation);
+            }
+        }
+
+        let key = DataKey::PlanMetadata(plan_id, 7000);
+        let mut list: Vec<GeneticTriggerConfig> = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| Vec::new(&env));
+
+        list.push_back(trigger.clone());
+        env.storage().persistent().set(&key, &list);
+
+        // Emit event
+        env.events().publish(
+            (symbol_short!("GENETIC"), symbol_short!("ADD")),
+            (plan_id, trigger),
+        );
+
+        Ok(())
+    }
+
+    /// Retrieve all genetic health triggers for a plan.
+    pub fn get_genetic_triggers(env: Env, plan_id: u64) -> Vec<GeneticTriggerConfig> {
+        let key = DataKey::PlanMetadata(plan_id, 7000);
+        env.storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| Vec::new(&env))
+    }
+
+    /// Configure a designated genetic/health oracle address for the plan.
+    /// Only the plan owner or admin may call this.
+    pub fn set_genetic_oracle(
+        env: Env,
+        caller: Address,
+        plan_id: u64,
+        oracle: Address,
+    ) -> Result<(), InheritanceError> {
+        caller.require_auth();
+
+        let plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
+        if plan.owner != caller {
+            Self::require_admin(&env, &caller)?;
+        }
+
+        let key = DataKey::PlanMetadata(plan_id, 7001);
+        env.storage().persistent().set(&key, &oracle);
+
+        Ok(())
+    }
+
+    /// Get the designated genetic/health oracle address for the plan.
+    pub fn get_genetic_oracle(env: Env, plan_id: u64) -> Option<Address> {
+        let key = DataKey::PlanMetadata(plan_id, 7001);
+        env.storage().persistent().get(&key)
+    }
+
+    /// Set genetic inheritance info (DNA hash, family tree, etc.) for a plan.
+    pub fn set_genetic_inheritance(
+        env: Env,
+        caller: Address,
+        plan_id: u64,
+        info: GeneticInheritance,
+    ) -> Result<(), InheritanceError> {
+        caller.require_auth();
+
+        let plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
+        if plan.owner != caller {
+            Self::require_admin(&env, &caller)?;
+        }
+
+        let key = DataKey::PlanMetadata(plan_id, 7002);
+        env.storage().persistent().set(&key, &info);
+
+        Ok(())
+    }
+
+    /// Get the genetic inheritance info for a plan.
+    pub fn get_genetic_inheritance(env: Env, plan_id: u64) -> Option<GeneticInheritance> {
+        let key = DataKey::PlanMetadata(plan_id, 7002);
+        env.storage().persistent().get(&key)
+    }
+
+    /// Report new genetic health data from the designated oracle.
+    /// If the data matches/exceeds a configured trigger condition, inheritance is automatically activated.
+    pub fn report_genetic_data(
+        env: Env,
+        oracle: Address,
+        plan_id: u64,
+        condition_name: String,
+        value: u32,
+    ) -> Result<(), InheritanceError> {
+        oracle.require_auth();
+
+        // Check if caller is authorized designated oracle or contract admin
+        let designated_oracle = Self::get_genetic_oracle(env.clone(), plan_id);
+        if let Some(ref registered) = designated_oracle {
+            if *registered != oracle {
+                Self::require_admin(&env, &oracle)?;
+            }
+        } else {
+            // Default to admin authority if no custom oracle is configured
+            Self::require_admin(&env, &oracle)?;
+        }
+
+        let triggers = Self::get_genetic_triggers(env.clone(), plan_id);
+        let mut matched = false;
+
+        for trigger in triggers.iter() {
+            if trigger.condition_name == condition_name {
+                // Check if threshold condition is met
+                if value >= trigger.threshold_value {
+                    matched = true;
+                    break;
+                }
+            }
+        }
+
+        if matched {
+            Self::execute_inheritance_trigger(&env, plan_id)?;
+
+            // Emit event
+            env.events().publish(
+                (symbol_short!("GENETIC"), symbol_short!("TRIGGER")),
+                (plan_id, condition_name, value),
+            );
+        }
 
         Ok(())
     }

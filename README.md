@@ -1,4 +1,4 @@
-# XourceX
+# XourceX 
 
 **Programmable, Fiat‑Native Digital Inheritance Infrastructure on Stellar**
 

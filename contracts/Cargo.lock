@@ -738,6 +738,7 @@ name = "inheritance-contract"
 version = "0.0.0"
 dependencies = [
  "access-control",
+ "genetic-verification",
  "mock_token",
  "soroban-sdk",
 ]
