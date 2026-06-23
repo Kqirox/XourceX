@@ -1,2 +1,0 @@
-ALTER TABLE will_documents
-ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'draft';

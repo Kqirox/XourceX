@@ -5,7 +5,7 @@ import { WalletProvider } from "@/context/WalletContext";
 import { AdminAuthProvider } from "@/context/AdminAuthContext";
 import { KYCProvider } from "@/context/KYCContext";
 import { WalletModal } from "@/components/WalletModal";
-import { KYCVerificationModal } from "@/components/KYCVerificationModal";
+
 import {
   OrganizationStructuredData,
   WebsiteStructuredData,
@@ -115,7 +115,6 @@ export default function RootLayout({
             <KYCProvider>
               <main className="">{children}</main>
               <WalletModal />
-              <KYCVerificationModal />
             </KYCProvider>
           </WalletProvider>
         </AdminAuthProvider>

@@ -74,10 +74,10 @@ export default function HowItWorksSection() {
                 />
               </div>
               <h4 className="text-[#FCFFFF] font-semibold text-[18px] mb-2">
-                1. Plant the Roots
+                1. Deposit & Grow
               </h4>
               <p className="text-[14px] text-[#92A5A8] max-w-[200px] mx-auto">
-                Add Your Assets And Choose Your Beneficiaries.
+                Fund Your Plan and Opt-In to Earn Continuous Yield.
               </p>
             </div>
           </div>
@@ -101,10 +101,10 @@ export default function HowItWorksSection() {
                 />
               </div>
               <p className="text-[14px] text-[#92A5A8] max-w-[200px] mx-auto">
-                Set Clear Rules For Who Gets What And When.
+                Add Multiple Beneficiaries and Setup Allocation Splits.
               </p>
               <h4 className="text-[#FCFFFF] font-semibold text-[18px] mb-2">
-                2. Grow the Branches
+                2. Configure Mass Payout
               </h4>
             </div>
           </div>
@@ -128,10 +128,10 @@ export default function HowItWorksSection() {
                 />
               </div>
               <h4 className="text-[#FCFFFF] font-semibold text-[18px] mb-2">
-                3. Watch It Bloom
+                3. Direct Fiat off-ramp
               </h4>
               <p className="text-[14px] text-[#92A5A8] max-w-[200px] mx-auto">
-                We Handle The Rest — Ensuring Smooth, Secure Transfers.
+                Receive directly in local fiat cash via Stellar Anchors.
               </p>
             </div>
           </div>

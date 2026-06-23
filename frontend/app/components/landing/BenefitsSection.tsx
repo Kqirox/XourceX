@@ -48,15 +48,13 @@ export default function BenefitsSection() {
 
           <div className="mt-6 max-w-2xl text-slate-400 leading-relaxed text-sm">
             <p className="mb-4 text-[#FCFFFF] text-[18px]">
-              <span className="font-semibold">Inherit X</span>
-              helps you plan and share your assets with the right people, at
-              the right time. We make inheritance simple, secure, and
-              stress-free — without unnecessary delays or complications.
+              <span className="font-semibold">XourceX</span>
+              helps you plan and allocate your digital wealth with maximum yield generation,
+              ensuring your capital grows until the moment of transfer.
             </p>
             <p className="text-[#FCFFFF] text-[18px]">
-              Think of it as planting a tree: your roots are the assets
-              you&apos;ve built, and we make sure the branches grow to those
-              you care about most.
+              Distribute to any number of heirs via customizable percentage splits, and settle
+              automatically in local fiat cash straight to their local bank accounts using Stellar anchors.
             </p>
           </div>
         </div>
@@ -66,26 +64,26 @@ export default function BenefitsSection() {
           <div className="grid md:grid-cols-4">
             <FeatureCard
               icon={ThumbsUp}
-              title="Easy to Use"
-              desc="No Confusing Legal Jargon — Just Clear Steps Everyone Can Follow."
+              title="Yield on Inheritance"
+              desc="Assets earn yield continuously in the background, maximizing value for heirs."
               index={0}
             />
             <FeatureCard
               icon={ShieldCheck}
-              title="Secure & Private"
-              desc="Your Data And Assets Are Protected With Top-Level Encryption."
+              title="Mass Payout Splits"
+              desc="Configure allocations for multiple beneficiaries to split assets smoothly."
               index={1}
             />
             <FeatureCard
               icon={Settings}
-              title="Custom Plans"
-              desc="Get Your Rules For Who Gets What, And When."
+              title="Fiat Off-Ramping"
+              desc="Settlement via Stellar Anchors directly to bank accounts and mobile money."
               index={2}
             />
             <FeatureCard
               icon={Zap}
-              title="Stress-free Transfers"
-              desc="We Handle The Details So Your Legacy Reaches The Right Hands."
+              title="Proof-of-Life Pings"
+              desc="Smart contract handles trigger conditions dynamically without third parties."
               index={3}
             />
           </div>

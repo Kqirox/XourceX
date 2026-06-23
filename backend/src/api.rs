@@ -106,7 +106,10 @@ async fn trigger_payout(
     State(_state): State<Arc<AppState>>,
     Json(_payload): Json<PayoutRequest>,
 ) -> impl IntoResponse {
-    (StatusCode::NOT_IMPLEMENTED, "Payout trigger logic not implemented")
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        "Payout trigger logic not implemented",
+    )
 }
 
 // Handler: Get Anchor Payouts

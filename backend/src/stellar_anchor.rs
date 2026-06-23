@@ -32,6 +32,7 @@ pub struct AnchorPayout {
     pub updated_at: String,
 }
 
+#[derive(Default)]
 pub struct AnchorRegistry;
 
 impl AnchorRegistry {

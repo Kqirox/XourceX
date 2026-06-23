@@ -22,19 +22,16 @@ export default function AboutSection() {
           className="text-[18px] text-[#FCFFFF] leading-relaxed mb-8 animate-slide-up"
           style={{ animationDelay: "0.2s" }}
         >
-          Inherit X helps you plan and share your assets with the right
-          people, at the right time. We make inheritance simple, secure, and
-          stress-free — without unnecessary delays or complications. Think of
-          it as planting a tree: your roots are the assets you&apos;ve built,
-          and we make sure the branches grow to those you care about most.
+          XourceX simplifies digital wealth transfer by introducing yield-generating
+          inheritance plans with multi-beneficiary allocations. Your locked assets accrue interest
+          continuously, maximizing the value passed to your heirs.
         </p>
         <div
           className="text-[18px] text-[#FCFFFF] animate-slide-up"
           style={{ animationDelay: "0.3s" }}
         >
-          Think of it as planting a tree: your roots are the assets
-          you&apos;ve built, and we make sure the branches grow to those you
-          care about most.
+          Through integrated Stellar Anchors, your heirs receive payouts directly
+          in their local fiat bank accounts or mobile money wallets, bypassing any Web3 complexity.
         </div>
       </div>
       {/* Decorative tree-like background glow */}

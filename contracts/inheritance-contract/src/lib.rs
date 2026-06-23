@@ -1,7 +1,5 @@
 #![no_std]
-use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, Address, Env, String, Vec,
-};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env, String, Vec};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -41,9 +39,11 @@ pub struct InheritancePlan {
 pub struct InheritanceContract;
 
 #[contractimpl]
+#[allow(clippy::too_many_arguments)]
 impl InheritanceContract {
     /// Create a yield-bearing inheritance plan with mass beneficiaries payout allocations.
     /// Contributors: Implement token transfers from owner, validation checks, and storage configuration.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_plan(
         _env: Env,
         _owner: Address,
