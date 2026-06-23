@@ -1,5 +1,6 @@
 pub struct Config {
     pub port: u16,
+    pub database_url: String,
 }
 
 impl Config {
@@ -8,6 +9,9 @@ impl Config {
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(3001);
-        Ok(Config { port })
+        let database_url = std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/xourcex".to_string());
+        Ok(Config { port, database_url })
     }
 }
+

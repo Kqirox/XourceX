@@ -34,6 +34,7 @@ pub struct Plan {
 
 pub struct AppState {
     pub anchor: Arc<AnchorRegistry>,
+    pub db_pool: Option<sqlx::PgPool>,
 }
 
 #[derive(Deserialize)]

@@ -5,6 +5,7 @@ use std::sync::Arc;
 fn test_router_compiles() {
     let state = Arc::new(AppState {
         anchor: Arc::new(xourcex_backend::stellar_anchor::AnchorRegistry::new()),
+        db_pool: None,
     });
     let _app = create_router(state);
     // Router created successfully!

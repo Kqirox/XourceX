@@ -1,7 +1,7 @@
-use xourcex_backend::{create_router, telemetry, AppState, Config};
+use xourcex_backend::{create_router, telemetry, AppState, Config, DbManager};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -11,9 +11,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load configuration
     let config = Config::load()?;
 
+    // Attempt to connect to PostgreSQL stub/real
+    let db_pool = match DbManager::create_pool(&config.database_url).await {
+        Ok(pool) => {
+            info!("Successfully connected to PostgreSQL database.");
+            if let Err(e) = DbManager::run_migrations(&pool).await {
+                warn!("Failed to run database migrations: {:?}", e);
+            }
+            Some(pool)
+        }
+        Err(e) => {
+            warn!("Could not connect to PostgreSQL ({}): {:?}. Running with db_pool = None", config.database_url, e);
+            None
+        }
+    };
+
     // Initialize state skeleton
     let state = Arc::new(AppState {
         anchor: Arc::new(xourcex_backend::stellar_anchor::AnchorRegistry::new()),
+        db_pool,
     });
 
     // Create Axum application
@@ -28,3 +44,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
