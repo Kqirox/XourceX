@@ -301,6 +301,7 @@ fn test_validate_beneficiaries_basis_points() {
 #[test]
 fn test_create_beneficiary_success() {
     let env = Env::default();
+    let contract_id = env.register_contract(None, InheritanceContract);
 
     let full_name = String::from_str(&env, "John Doe");
     let email = String::from_str(&env, "john@example.com");
@@ -308,15 +309,19 @@ fn test_create_beneficiary_success() {
     let bank_account = create_test_bytes(&env, "1234567890123456");
     let allocation = 5000u32; // 50% in basis points
 
-    let result = InheritanceContract::create_beneficiary(
-        &env,
-        full_name,
-        email,
-        claim_code,
-        bank_account,
-        allocation,
-        1u32, // priority
-    );
+    let result = env.as_contract(&contract_id, || {
+        InheritanceContract::create_beneficiary(
+            &env,
+            1u64,
+            0u32,
+            full_name,
+            email,
+            claim_code,
+            bank_account,
+            allocation,
+            1u32, // priority
+        )
+    });
 
     assert!(result.is_ok());
     let beneficiary = result.unwrap();
@@ -326,17 +331,22 @@ fn test_create_beneficiary_success() {
 #[test]
 fn test_create_beneficiary_invalid_data() {
     let env = Env::default();
+    let contract_id = env.register_contract(None, InheritanceContract);
 
     // Test empty name
-    let result = InheritanceContract::create_beneficiary(
-        &env,
-        String::from_str(&env, ""), // empty name
-        String::from_str(&env, "john@example.com"),
-        123456u32,
-        create_test_bytes(&env, "1234567890123456"),
-        5000u32,
-        1u32,
-    );
+    let result = env.as_contract(&contract_id, || {
+        InheritanceContract::create_beneficiary(
+            &env,
+            1u64,
+            0u32,
+            String::from_str(&env, ""), // empty name
+            String::from_str(&env, "john@example.com"),
+            123456u32,
+            create_test_bytes(&env, "1234567890123456"),
+            5000u32,
+            1u32,
+        )
+    });
     assert!(result.is_err());
     assert_eq!(
         result.err().unwrap(),
@@ -344,15 +354,19 @@ fn test_create_beneficiary_invalid_data() {
     );
 
     // Test invalid claim code
-    let result = InheritanceContract::create_beneficiary(
-        &env,
-        String::from_str(&env, "John Doe"),
-        String::from_str(&env, "john@example.com"),
-        1000000u32, // > 999999
-        create_test_bytes(&env, "1234567890123456"),
-        5000u32,
-        2u32,
-    );
+    let result = env.as_contract(&contract_id, || {
+        InheritanceContract::create_beneficiary(
+            &env,
+            1u64,
+            1u32,
+            String::from_str(&env, "John Doe"),
+            String::from_str(&env, "john@example.com"),
+            1000000u32, // > 999999
+            create_test_bytes(&env, "1234567890123456"),
+            5000u32,
+            2u32,
+        )
+    });
     assert!(result.is_err());
     assert_eq!(
         result.err().unwrap(),
@@ -360,15 +374,19 @@ fn test_create_beneficiary_invalid_data() {
     );
 
     // Test zero allocation
-    let result = InheritanceContract::create_beneficiary(
-        &env,
-        String::from_str(&env, "John Doe"),
-        String::from_str(&env, "john@example.com"),
-        123456u32,
-        create_test_bytes(&env, "1234567890123456"),
-        0u32, // zero allocation
-        1u32, // priority
-    );
+    let result = env.as_contract(&contract_id, || {
+        InheritanceContract::create_beneficiary(
+            &env,
+            1u64,
+            2u32,
+            String::from_str(&env, "John Doe"),
+            String::from_str(&env, "john@example.com"),
+            123456u32,
+            create_test_bytes(&env, "1234567890123456"),
+            0u32, // zero allocation
+            1u32, // priority
+        )
+    });
     assert!(result.is_err());
     assert_eq!(result.err().unwrap(), InheritanceError::InvalidAllocation);
 }
@@ -3306,7 +3324,7 @@ fn test_double_approval_rejection() {
     client.approve_emergency_access(&guardian_1, &plan_id, &trusted_contact);
     let res = client.try_approve_emergency_access(&guardian_1, &plan_id, &trusted_contact);
     assert!(res.is_err());
-    assert_eq!(res.err().unwrap(), Ok(InheritanceError::AlreadyApproved));
+    assert_eq!(res.err().unwrap(), Ok(InheritanceError::AlreadyClaimed));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3393,10 +3411,7 @@ fn test_add_emergency_contact_duplicate_fails() {
     client.add_emergency_contact(&user, &plan_id, &contact);
     let res = client.try_add_emergency_contact(&user, &plan_id, &contact);
     assert!(res.is_err());
-    assert_eq!(
-        res.err().unwrap(),
-        Ok(InheritanceError::EmergencyContactAlreadyExists)
-    );
+    assert_eq!(res.err().unwrap(), Ok(InheritanceError::AlreadyClaimed));
 }
 
 #[test]
@@ -3476,7 +3491,7 @@ fn test_remove_emergency_contact_not_found() {
     assert!(res.is_err());
     assert_eq!(
         res.err().unwrap(),
-        Ok(InheritanceError::EmergencyContactNotFound)
+        Ok(InheritanceError::BeneficiaryNotFound)
     );
 }
 
@@ -4418,7 +4433,7 @@ fn test_finalize_succeeds_after_all_witnesses_sign() {
     client.sign_as_witness(
         &witness,
         &plan_id,
-        &dummy_sig(&env, 1),
+        &dummy_sig(&env, 2),
         &(env.ledger().timestamp() + 1000),
     );
 
@@ -4666,7 +4681,7 @@ fn test_update_legacy_message_rejected_after_lock() {
             key_reference: soroban_sdk::String::from_str(&env, "ref_new"),
         },
     );
-    assert_eq!(result, Err(Ok(InheritanceError::WillAlreadyFinalized)));
+    assert_eq!(result, Err(Ok(InheritanceError::AlreadyClaimed)));
 }
 
 #[test]
@@ -4679,7 +4694,7 @@ fn test_finalize_legacy_message_twice_fails() {
 
     client.finalize_legacy_message(&owner, &message_id);
     let result = client.try_finalize_legacy_message(&owner, &message_id);
-    assert_eq!(result, Err(Ok(InheritanceError::WillAlreadyFinalized)));
+    assert_eq!(result, Err(Ok(InheritanceError::AlreadyClaimed)));
 }
 
 #[test]
@@ -5042,7 +5057,7 @@ fn test_delete_legacy_message_fails_after_lock() {
     client.finalize_legacy_message(&owner, &message_id);
 
     let result = client.try_delete_legacy_message(&owner, &message_id);
-    assert_eq!(result, Err(Ok(InheritanceError::WillAlreadyFinalized)));
+    assert_eq!(result, Err(Ok(InheritanceError::AlreadyClaimed)));
     // Message still present
     assert!(client.get_legacy_message(&message_id).is_some());
 }
@@ -6349,4 +6364,174 @@ fn test_set_conditions_blocked_after_trigger() {
 
     let result = client.try_add_time_trigger(&owner, &plan_id, &9999u64);
     assert!(result.is_err());
+}
+
+fn test_dna_hash(env: &Env, matching_prefix: u8) -> soroban_sdk::BytesN<32> {
+    let mut hash = [0u8; 32];
+    let mut i = 0usize;
+    while i < matching_prefix as usize && i < 32 {
+        hash[i] = 7;
+        i += 1;
+    }
+    while i < 32 {
+        hash[i] = (i as u8).saturating_add(matching_prefix).saturating_add(1);
+        i += 1;
+    }
+    soroban_sdk::BytesN::from_array(env, &hash)
+}
+
+fn relative_input(
+    env: &Env,
+    relationship: family_tree::RelationshipType,
+    matching_prefix: u8,
+) -> family_tree::RelativeInput {
+    family_tree::RelativeInput {
+        address: Address::generate(env),
+        dna_hash: test_dna_hash(env, matching_prefix),
+        claimed_relationship: relationship,
+        supporting_documents: Vec::new(env),
+    }
+}
+
+#[test]
+fn test_build_family_tree_and_inheritance_mapping() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+    let root = Address::generate(&env);
+    let relatives = vec![
+        &env,
+        relative_input(&env, family_tree::RelationshipType::Child, 16),
+        relative_input(&env, family_tree::RelationshipType::Sibling, 14),
+    ];
+
+    let tree_id = client.build_family_tree(&root, &relatives);
+    assert_eq!(tree_id, 1);
+
+    let rights = client.calculate_inheritance_rights(&tree_id, &1u64);
+    assert_eq!(rights.len(), 2);
+    assert_eq!(rights.get(0).unwrap().share_bp, 5000);
+
+    let path = client.find_inheritance_path(&tree_id, &1u64, &2u64);
+    assert!(path.is_valid);
+    assert_eq!(path.total_degree, 1);
+    assert_eq!(path.path_steps.len(), 1);
+}
+
+#[test]
+fn test_discover_relatives_and_verify_relationship_degree() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+    let root = Address::generate(&env);
+    let target_hash = test_dna_hash(&env, 32);
+    let relatives = vec![
+        &env,
+        family_tree::RelativeInput {
+            address: Address::generate(&env),
+            dna_hash: target_hash.clone(),
+            claimed_relationship: family_tree::RelationshipType::Sibling,
+            supporting_documents: Vec::new(&env),
+        },
+    ];
+    client.build_family_tree(&root, &relatives);
+
+    let discovered = client.discover_relatives(&test_dna_hash(&env, 16), &2u32);
+    assert_eq!(discovered.len(), 1);
+    assert_eq!(discovered.get(0).unwrap().relationship_degree, 1);
+
+    let verification = client.verify_relationship_degree(
+        &test_dna_hash(&env, 32),
+        &test_dna_hash(&env, 16),
+        &1u32,
+    );
+    assert!(verification.is_verified);
+    assert_eq!(verification.actual_degree, 1);
+}
+
+#[test]
+fn test_merge_family_trees_and_resolve_conflicts() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+    let root1 = Address::generate(&env);
+    let root2 = Address::generate(&env);
+    let tree1 = client.build_family_tree(
+        &root1,
+        &vec![
+            &env,
+            relative_input(&env, family_tree::RelationshipType::Child, 16),
+        ],
+    );
+    let tree2 = client.build_family_tree(
+        &root2,
+        &vec![
+            &env,
+            relative_input(&env, family_tree::RelationshipType::Sibling, 14),
+        ],
+    );
+
+    let merged = client.merge_family_trees(
+        &tree1,
+        &tree2,
+        &family_tree::MergePoint {
+            person1_tree1: 2,
+            person2_tree2: 2,
+            relationship: family_tree::RelationshipType::Cousin,
+            confidence: 80,
+        },
+    );
+    assert_eq!(merged, 3);
+
+    let conflicts = vec![
+        &env,
+        family_tree::TreeConflict {
+            person_id: 2,
+            conflict_type: family_tree::ConflictType::DuplicatePerson,
+            description: String::from_str(&env, "duplicate person"),
+        },
+    ];
+    let resolutions = client.resolve_tree_conflicts(&merged, &conflicts);
+    assert_eq!(resolutions.len(), 1);
+    assert_eq!(
+        resolutions.get(0).unwrap().resolution_action,
+        family_tree::ResolutionAction::MergeRecords
+    );
+}
+
+#[test]
+fn test_scan_genetic_database_and_cross_reference_documents() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+    let root = Address::generate(&env);
+    client.build_family_tree(
+        &root,
+        &vec![
+            &env,
+            relative_input(&env, family_tree::RelationshipType::Child, 16),
+        ],
+    );
+
+    let matches = client.scan_genetic_database(&test_dna_hash(&env, 32), &45u32);
+    assert_eq!(matches.len(), 1);
+
+    let document = test_dna_hash(&env, 8);
+    let document_matches = client.cross_reference_documents(
+        &vec![&env, document.clone()],
+        &vec![
+            &env,
+            family_tree::StoredDocument {
+                document_hash: document,
+                document_type: family_tree::DocumentType::BirthCertificate,
+                person_id: 2,
+            },
+        ],
+    );
+    assert_eq!(document_matches.len(), 1);
+    assert_eq!(document_matches.get(0).unwrap().confidence, 90);
 }

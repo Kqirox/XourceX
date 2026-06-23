@@ -1,8 +1,7 @@
 #![no_std]
 use access_control::{self, Role};
 use genetic_verification::{
-    is_valid_risk_score, DNAVerificationStatus, GeneticCondition, GeneticInheritance,
-    GeneticTriggerConfig, GeneticTriggerType,
+    is_valid_risk_score, GeneticInheritance, GeneticTriggerConfig, GeneticTriggerType,
 };
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, log, symbol_short, token, vec, Address,
@@ -13,6 +12,8 @@ mod disputes;
 use disputes::{DisputeRecord, DisputeStatus};
 
 mod cross_chain;
+
+pub mod family_tree;
 pub use cross_chain::{
     BridgeProtocol, CrossChainAsset, CrossChainError, CrossChainInheritancePlan, SupportedChain,
 };
@@ -5948,6 +5949,160 @@ impl InheritanceContract {
         }
 
         Ok(())
+    }
+
+    // ─── Family Tree Construction & Relationship Mapping ─────────────────────
+
+    pub fn build_family_tree(
+        env: Env,
+        root_person: Address,
+        initial_relatives: Vec<family_tree::RelativeInput>,
+    ) -> Result<u64, InheritanceError> {
+        root_person.require_auth();
+        Self::check_not_paused(&env);
+
+        let tree_id =
+            family_tree::build_family_tree_internal(&env, root_person.clone(), initial_relatives)?;
+        env.events().publish(
+            (symbol_short!("FTREE"), symbol_short!("BUILD")),
+            (tree_id, root_person),
+        );
+
+        Ok(tree_id)
+    }
+
+    pub fn discover_relatives(
+        env: Env,
+        person_dna_hash: BytesN<32>,
+        search_radius: u32,
+    ) -> Result<Vec<family_tree::DiscoveredRelative>, InheritanceError> {
+        Self::check_not_paused(&env);
+
+        let relatives =
+            family_tree::discover_relatives_internal(&env, person_dna_hash, search_radius)?;
+        env.events().publish(
+            (symbol_short!("FTREE"), symbol_short!("DISCOV")),
+            (search_radius, relatives.len()),
+        );
+
+        Ok(relatives)
+    }
+
+    pub fn verify_relationship_degree(
+        env: Env,
+        person1_hash: BytesN<32>,
+        person2_hash: BytesN<32>,
+        claimed_degree: u32,
+    ) -> Result<family_tree::VerificationResult, InheritanceError> {
+        Self::check_not_paused(&env);
+
+        let result = family_tree::verify_relationship_degree_internal(
+            &env,
+            person1_hash,
+            person2_hash,
+            claimed_degree,
+        )?;
+        env.events().publish(
+            (symbol_short!("FTREE"), symbol_short!("VERIFY")),
+            (result.is_verified, result.actual_degree, result.confidence),
+        );
+
+        Ok(result)
+    }
+
+    pub fn merge_family_trees(
+        env: Env,
+        tree1_id: u64,
+        tree2_id: u64,
+        merge_point: family_tree::MergePoint,
+    ) -> Result<u64, InheritanceError> {
+        Self::check_not_paused(&env);
+
+        let merged_tree_id = family_tree::merge_family_trees_internal(
+            &env,
+            tree1_id,
+            tree2_id,
+            merge_point.clone(),
+        )?;
+        env.events().publish(
+            (symbol_short!("FTREE"), symbol_short!("MERGE")),
+            (tree1_id, tree2_id, merged_tree_id, merge_point.confidence),
+        );
+
+        Ok(merged_tree_id)
+    }
+
+    pub fn resolve_tree_conflicts(
+        env: Env,
+        tree_id: u64,
+        conflicts: Vec<family_tree::TreeConflict>,
+    ) -> Result<Vec<family_tree::Resolution>, InheritanceError> {
+        Self::check_not_paused(&env);
+
+        let resolutions = family_tree::resolve_tree_conflicts(&env, tree_id, conflicts)?;
+        env.events().publish(
+            (symbol_short!("FTREE"), symbol_short!("RESOLV")),
+            (tree_id, resolutions.len()),
+        );
+
+        Ok(resolutions)
+    }
+
+    pub fn calculate_inheritance_rights(
+        env: Env,
+        tree_id: u64,
+        deceased_person_id: u64,
+    ) -> Result<Vec<family_tree::InheritanceRight>, InheritanceError> {
+        Self::check_not_paused(&env);
+
+        let rights =
+            family_tree::calculate_inheritance_rights_internal(&env, tree_id, deceased_person_id)?;
+        env.events().publish(
+            (symbol_short!("FTREE"), symbol_short!("RIGHTS")),
+            (tree_id, deceased_person_id, rights.len()),
+        );
+
+        Ok(rights)
+    }
+
+    pub fn find_inheritance_path(
+        env: Env,
+        tree_id: u64,
+        deceased_person: u64,
+        potential_heir: u64,
+    ) -> Result<family_tree::InheritancePath, InheritanceError> {
+        Self::check_not_paused(&env);
+
+        let path = family_tree::find_inheritance_path_internal(
+            &env,
+            tree_id,
+            deceased_person,
+            potential_heir,
+        )?;
+        env.events().publish(
+            (symbol_short!("FTREE"), symbol_short!("PATH")),
+            (tree_id, deceased_person, potential_heir, path.total_degree),
+        );
+
+        Ok(path)
+    }
+
+    pub fn scan_genetic_database(
+        env: Env,
+        target_dna_hash: BytesN<32>,
+        similarity_threshold: u32,
+    ) -> Result<Vec<family_tree::GeneticMatch>, InheritanceError> {
+        Self::check_not_paused(&env);
+        family_tree::scan_genetic_database(&env, target_dna_hash, similarity_threshold)
+    }
+
+    pub fn cross_reference_documents(
+        env: Env,
+        person_documents: Vec<BytesN<32>>,
+        database_documents: Vec<family_tree::StoredDocument>,
+    ) -> Result<Vec<family_tree::DocumentMatch>, InheritanceError> {
+        Self::check_not_paused(&env);
+        family_tree::cross_reference_documents(&env, person_documents, database_documents)
     }
 }
 
