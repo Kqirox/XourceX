@@ -4,105 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-async-graphql = "7.0.2"
-async-graphql-axum = "7.0.2"
-# Async runtime
 tokio = { version = "1.0", features = ["full"] }
-tokio-util = "0.7"
-
-# Web framework
 axum = { version = "0.8", features = ["json", "multipart", "macros"] }
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "request-id", "util"] }
-tower_governor = "0.8.0"
-governor = "0.10.4"
-
-# Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-# Database
-sqlx = { version = "0.7", features = [
-    "runtime-tokio-rustls",
-    "postgres",
-    "chrono",
-    "uuid",
-    "json",
-    "migrate",
-    "rust_decimal"
-] }
-rust_decimal = { version = "1.33", features = ["serde-with-str", "db-postgres"] }
-rust_decimal_macros = "1.33"
-
-# Authentication & Security
-jsonwebtoken = "9.0"
-bcrypt = "0.15"
-ring = "0.17"
-sha2 = "0.10"
-postgres-types = { version = "0.2", features = ["with-chrono-0_4", "with-uuid-1", "with-serde_json-1"] }
-
-# Stellar SDK integration (Issue #470)
-# stellar-xdr: XDR types for transaction building/encoding (maintained by SDF)
-stellar-xdr = { version = "21.0", features = ["curr", "alloc"] }
-# stellar-strkey is already listed below; used for address encode/decode
-
-# HTTP client
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
-redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
-
-# Logging
+chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-
-# Metrics — Issue #423
-# `metrics` is the instrumentation facade (counter!/histogram!/gauge! macros).
-# `metrics-exporter-prometheus` renders the registry as a Prometheus text exposition.
-metrics = "0.24"
-metrics-exporter-prometheus = { version = "0.18", default-features = false, features = ["http-listener"] }
-
-# Error tracking — Issue #424
-# `sentry` core SDK with tower middleware, tracing integration, anyhow support,
-# panic capture, and release-health (session tracking).
-sentry = { version = "0.47", default-features = false, features = [
-    "backtrace",
-    "contexts",
-    "panic",
-    "release-health",
-    "rustls",
-    "tracing",
-    "tower",
-    "tower-axum-matched-path",
-    "tower-http",
-    "anyhow",
-    "transport",
-] }
-sentry-tower = "0.47"
-sentry-tracing = "0.47"
-
-# Configuration
-config = "0.14"
-
-# Error handling
 anyhow = "1.0"
 thiserror = "1.0"
-
-# Utilities
 uuid = { version = "1.0", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-regex = "1.10"
-base64 = "0.21"
-rand = { version = "0.8", features = ["std"] }
-hex = "0.4"
-dotenvy = "0.15"
-async-trait = "0.1.74"
-stellar-strkey = "0.0.16"
-once_cell = "1.20"
-
-
-# Testing
-[dev-dependencies]
-tokio-test = "0.4"
-httpmock = "0.7"
-rust_decimal_macros = "1.33"
-
-
+rand = "0.8"
