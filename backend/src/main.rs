@@ -1,12 +1,15 @@
 use xourcex_backend::{create_router, telemetry, AppState, Config, DbManager};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing logging
     telemetry::init_tracing()?;
+
+    //loading the .env
+    dotenvy::dotenv().ok();
 
     // Load configuration
     let config = Config::load()?;
@@ -15,17 +18,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_pool = match DbManager::create_pool(&config.database_url).await {
         Ok(pool) => {
             info!("Successfully connected to PostgreSQL database.");
+
             if let Err(e) = DbManager::run_migrations(&pool).await {
                 warn!("Failed to run database migrations: {:?}", e);
             }
-            Some(pool)
+
+            pool
         }
+
         Err(e) => {
-            warn!(
-                "Could not connect to PostgreSQL ({}): {:?}. Running with db_pool = None",
+            error!(
+                "Failed to connect to PostgreSQL database ({}): {:?}",
                 config.database_url, e
             );
-            None
+
+            std::process::exit(1);
         }
     };
 
