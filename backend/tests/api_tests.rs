@@ -2,13 +2,12 @@ use axum::{
     body::Body,
     http::{self, Request, StatusCode},
 };
+use ed25519_dalek::{Signer, SigningKey};
 use xourcex_backend::{create_router, AppState};
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use tower::ServiceExt; // for oneshot
-
-use ed25519_dalek::{Signer, SigningKey};
 
 fn generate_valid_signature(body: &str, _public_key_hex: &str) -> (String, String) {
     // Use a fixed test keypair for deterministic testing
@@ -28,13 +27,22 @@ fn generate_valid_signature(body: &str, _public_key_hex: &str) -> (String, Strin
     (public_key_hex, signature_hex)
 }
 
-fn setup_app() -> axum::Router {
+async fn setup_app() -> axum::Router {
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:password@localhost:5432/test".to_string());
+
+    let db_pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .unwrap();
+
+    let _ = xourcex_backend::DbManager::run_migrations(&db_pool).await;
+
     let state = Arc::new(AppState {
         anchor: Arc::new(xourcex_backend::stellar_anchor::AnchorRegistry::new()),
         kyc_tx: tokio::sync::broadcast::channel(16).0,
-        db_pool: PgPoolOptions::new()
-            .connect_lazy("postgres://postgres:password@localhost/test")
-            .unwrap(),
+        db_pool,
         kyc_webhook_secret: None,
     });
     create_router(state)
@@ -42,12 +50,12 @@ fn setup_app() -> axum::Router {
 
 #[tokio::test]
 async fn test_router_compiles() {
-    let _app = setup_app();
+    let _app = setup_app().await;
 }
 
 #[tokio::test]
 async fn test_create_plan_validation_empty_owner() {
-    let app = setup_app();
+    let app = setup_app().await;
 
     let response = app
         .oneshot(
@@ -86,7 +94,7 @@ async fn test_create_plan_validation_empty_owner() {
 
 #[tokio::test]
 async fn test_create_plan_validation_invalid_bps() {
-    let app = setup_app();
+    let app = setup_app().await;
 
     // Sum is 9000, not 10000
     let response = app
@@ -126,7 +134,7 @@ async fn test_create_plan_validation_invalid_bps() {
 
 #[tokio::test]
 async fn test_create_plan_validation_negative_amount() {
-    let app = setup_app();
+    let app = setup_app().await;
 
     let response = app
         .oneshot(
@@ -165,7 +173,7 @@ async fn test_create_plan_validation_negative_amount() {
 
 #[tokio::test]
 async fn test_create_plan_with_valid_signature() {
-    let app = setup_app();
+    let app = setup_app().await;
 
     let body = json!({
         "owner": "owner_address",
@@ -212,7 +220,7 @@ async fn test_create_plan_with_valid_signature() {
 
 #[tokio::test]
 async fn test_get_plans_is_public() {
-    let app = setup_app();
+    let app = setup_app().await;
 
     let response = app
         .oneshot(
@@ -227,4 +235,36 @@ async fn test_get_plans_is_public() {
 
     // Should not require auth
     assert_ne!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_ping_plan_invalid_signature() {
+    let app = setup_app().await;
+
+    // Sign with some key, but use different owner
+    let mut rng = rand::thread_rng();
+    let signing_key = SigningKey::generate(&mut rng);
+    let signature = signing_key.sign(b"ping");
+    let signature_hex = hex::encode(signature.to_bytes());
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(http::Method::POST)
+                .uri("/api/plans/ping")
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "owner": "GDIW7P2XUXC4XZB452Y5Z774N4V27PUDHWTKWTQZ3KHYUGB743WEXG7T", // random owner
+                        "signature": signature_hex,
+                        "message": "ping"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
