@@ -18,6 +18,7 @@ use uuid::Uuid;
 use crate::auth::signature_auth_middleware;
 use crate::cache::PlanCache;
 use crate::kyc_webhook::kyc_webhook_handler;
+use crate::metrics::{latency_middleware, metrics_handler};
 use crate::stellar_anchor::AnchorRegistry;
 use crate::ws::{ws_handler, KycUpdateEvent};
 use crate::yield_calculator;
@@ -136,6 +137,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     Router::new()
         .merge(user_routes)
         .merge(public_routes)
+        .route("/metrics", get(metrics_handler))
+        .layer(from_fn(latency_middleware))
         .layer(cors)
         .with_state(state)
 }
