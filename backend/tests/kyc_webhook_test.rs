@@ -21,19 +21,18 @@ fn valid_payload() -> &'static str {
 fn test_state(secret: Option<&str>) -> std::sync::Arc<xourcex_backend::AppState> {
     use xourcex_backend::stellar_anchor::AnchorRegistry;
 
+    let (kyc_tx, _) = tokio::sync::broadcast::channel(100);
     let pool =
         sqlx::PgPool::connect_lazy("postgres://postgres:postgres@localhost:5432/xourcex_test")
             .unwrap();
 
-    let (kyc_tx, _) = tokio::sync::broadcast::channel(16);
-
     std::sync::Arc::new(xourcex_backend::AppState {
         anchor: std::sync::Arc::new(AnchorRegistry::new()),
         db_pool: pool,
-        kyc_tx,
         kyc_webhook_secret: secret.map(str::to_string),
         apy_config: xourcex_backend::yield_calculator::ApyConfig::default(),
         plan_cache: xourcex_backend::PlanCache::disabled(),
+        kyc_tx,
     })
 }
 #[tokio::test]

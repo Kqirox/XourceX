@@ -25,7 +25,7 @@ use crate::cache::PlanCache;
 use crate::kyc_webhook::kyc_webhook_handler;
 use crate::metrics::{latency_middleware, metrics_handler};
 use crate::stellar_anchor::AnchorRegistry;
-use crate::ws::{ws_handler, KycUpdateEvent};
+use crate::ws::ws_handler;
 use crate::yield_calculator;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,10 +52,10 @@ pub struct Plan {
 pub struct AppState {
     pub anchor: Arc<AnchorRegistry>,
     pub db_pool: sqlx::PgPool,
-    pub kyc_tx: tokio::sync::broadcast::Sender<KycUpdateEvent>,
     pub kyc_webhook_secret: Option<String>,
     pub apy_config: yield_calculator::ApyConfig,
     pub plan_cache: PlanCache,
+    pub kyc_tx: tokio::sync::broadcast::Sender<crate::ws::KycUpdateEvent>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -64,7 +64,7 @@ pub struct PlanQuery {
     pub beneficiary: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 pub struct PingRequest {
     pub owner: String,
     pub signature: String,
@@ -156,7 +156,6 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/kyc/required", get(is_kyc_required))
         .route("/api/kyc/requirements", get(get_kyc_requirements))
         .route("/ws/kyc", get(ws_handler));
-
     Router::new()
         .merge(user_routes)
         .merge(admin_routes)
@@ -585,6 +584,18 @@ async fn create_plan(
         beneficiaries: inserted_beneficiaries,
     };
 
+    // 3. Enqueue webhook event for plan.created (non-blocking)
+    let payload_value = serde_json::to_value(&response).unwrap_or(serde_json::json!({}));
+    if let Err(e) = crate::WebhookDispatcherService::enqueue_event(
+        &state.db_pool,
+        "plan.created",
+        &payload_value,
+    )
+    .await
+    {
+        tracing::warn!("Failed to enqueue webhook for plan.created: {:?}", e);
+    }
+
     (StatusCode::CREATED, Json(response)).into_response()
 }
 
@@ -800,7 +811,6 @@ async fn ping_plan(
         )
             .into_response();
     }
-
     // 2. Fetch the active plan from DB
     let plan = match sqlx::query_as::<_, PlanRow>(
         "SELECT * FROM plans WHERE owner_address = $1 AND is_active = true",
@@ -825,7 +835,6 @@ async fn ping_plan(
                 .into_response();
         }
     };
-
     // 3. Calculate accumulated yield
     let current_time = chrono::Utc::now().timestamp();
     let elapsed = if current_time > plan.last_ping {

@@ -15,6 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     metrics::init();
 
     //loading the .env
+
     dotenvy::dotenv().ok();
 
     // Load configuration
@@ -28,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         xourcex_backend::PlanCache::disabled()
     });
 
-    // Attempt to connect to PostgreSQL stub/real
+    // Connect to PostgreSQL and run migrations
     let db_pool = match DbManager::create_pool(&config.database_url).await {
         Ok(pool) => {
             info!("Successfully connected to PostgreSQL database.");
@@ -39,34 +40,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             pool
         }
-
         Err(e) => {
             error!(
                 "Failed to connect to PostgreSQL database ({}): {:?}",
                 config.database_url, e
             );
-
             std::process::exit(1);
         }
     };
 
-    // Initialize state skeleton
     let (kyc_tx, _) = tokio::sync::broadcast::channel(100);
+    // Initialize state
     let state = Arc::new(AppState {
         anchor: Arc::new(xourcex_backend::stellar_anchor::AnchorRegistry::new()),
         db_pool: db_pool.clone(),
-        kyc_tx,
         kyc_webhook_secret: std::env::var("KYC_WEBHOOK_SECRET").ok(),
         apy_config: xourcex_backend::yield_calculator::ApyConfig::from_env(),
         plan_cache: plan_cache.clone(),
+        kyc_tx: kyc_tx.clone(),
     });
 
+    // Start inactivity watchdog
     let inactivity_watchdog = Arc::new(InactivityWatchdogService::new(
         db_pool.clone(),
         plan_cache,
         InactivityWatchdogConfig::from_env(),
     ));
     inactivity_watchdog.start();
+
+    let webhook_dispatcher = Arc::new(xourcex_backend::WebhookDispatcherService::new(
+        db_pool.clone(),
+    ));
+    webhook_dispatcher.start();
 
     // Periodically refresh DB pool metrics
     {
