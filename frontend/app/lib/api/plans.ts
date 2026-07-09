@@ -8,6 +8,7 @@ import { apiClient, ApiResponse, PaginatedResponse } from "./client";
 export interface Plan {
   id: string;
   user_id: string;
+  owner_address?: string;
   title: string;
   description?: string;
   fee: number;
@@ -225,6 +226,19 @@ export class PlansAPI {
       }>
     >(`/api/plans/${planId}/inactivity-status`);
     return response.data!;
+  }
+
+  /**
+   * Get all plans filtered by owner's address
+   */
+  async getPlansByOwner(ownerAddress: string): Promise<Plan[]> {
+    const response = await apiClient.get<ApiResponse<Plan[]> | Plan[]>(
+      `/api/plans?owner=${ownerAddress}`
+    );
+    if (response && typeof response === "object" && "data" in response) {
+      return response.data as Plan[];
+    }
+    return response as Plan[];
   }
 }
 
