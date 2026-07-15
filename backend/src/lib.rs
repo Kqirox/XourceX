@@ -6,9 +6,11 @@ pub mod db;
 pub mod inactivity_watchdog;
 
 pub mod kyc_webhook;
+#[cfg(feature = "metrics")]
 pub mod metrics;
 pub mod middleware;
 
+#[cfg(feature = "pdf")]
 pub mod pdf;
 
 pub mod stellar_anchor;

@@ -27,10 +27,31 @@ To bridge the gap between Web3 assets and real-world utility, beneficiaries do n
 
 ---
 
-## 🚀 Getting Started
+## ⚡ Quick Install (Minimal)
+
+The repo has three independent layers. Install only what you need:
+
+```bash
+# Frontend — dev server only (no e2e tests, no PWA pipeline, no image optimiser)
+cd frontend && pnpm install    # .npmrc defaults optional=false (~50–80 MB lighter)
+pnpm run dev
+
+# Backend — no Redis, Prometheus, or PDF generation
+cd backend && cargo build --no-default-features
+cargo run --no-default-features
+
+# Contracts only
+cd contracts && cargo build --target wasm32-unknown-unknown --release
+```
+
+> **Tip:** Run `pnpm install --optional` in `frontend/` to restore optional deps:
+> `@playwright/test` (e2e), `@ducanh2912/next-pwa` (PWA), `sharp` (image optimiser), `@allbridge/bridge-core-sdk` (cross-chain bridge).
+
+---
+
+## 🚀 Getting Started (Full)
 
 ### 1. Smart Contracts
-To build and test the Soroban contracts:
 ```bash
 cd contracts
 cargo build --target wasm32-unknown-unknown --release
@@ -38,31 +59,43 @@ cargo test
 ```
 
 ### 2. Backend
-To start the Axum backend server (runs on port `3001` by default):
+
+Full build (Redis cache + Prometheus metrics + PDF reports):
 ```bash
 cd backend
 cargo run
 ```
 
-Optional cache tuning for hot plan reads:
+Minimal build (no optional deps — faster compile, no Redis/Prometheus/PDF required):
+```bash
+cd backend
+cargo run --no-default-features
+```
+
+Selective features:
+```bash
+cargo run -F redis-cache          # add Redis cache only
+cargo run -F redis-cache,metrics  # add Redis + Prometheus
+```
+
+Optional cache tuning:
 ```bash
 export REDIS_URL=redis://127.0.0.1:6379
 export PLAN_CACHE_TTL_SECS=15
 ```
 
-When Redis is enabled, `GET /api/plans` now returns:
-- `x-plan-cache-status`: `hit`, `miss`, `bypass`, or `error-fallback`
-- `x-plan-cache-lookup-ms`
-- `x-plan-db-query-ms`
-- `x-plan-total-latency-ms`
-
-Those headers are the easiest way to compare cache-hit latency against PostgreSQL fallback in local or staging runs.
+When Redis is enabled, `GET /api/plans` returns cache-timing headers:
+`x-plan-cache-status`, `x-plan-cache-lookup-ms`, `x-plan-db-query-ms`, `x-plan-total-latency-ms`
 
 ### 3. Frontend
-To run the Next.js development server:
 ```bash
 cd frontend
-npm run dev
+pnpm install           # lightweight install (optional deps skipped by default)
+pnpm run dev           # http://localhost:3000
+
+# For e2e tests:
+pnpm install --optional
+pnpm run test:e2e
 ```
 
 ---

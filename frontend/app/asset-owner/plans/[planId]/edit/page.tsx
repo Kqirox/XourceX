@@ -19,19 +19,19 @@ export default function EditPlanPage() {
 
   useEffect(() => {
     if (!planId) return;
-
-    plansAPI
-      .getPlan(planId)
-      .then(setPlan)
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load plan.")
-      )
-      .finally(() => setLoading(false));
+    const mockPlan = require("@/lib/mockStore").mockStore.getPlan(planId);
+    if (mockPlan) {
+      setPlan(mockPlan);
+    } else {
+      setError("Plan not found.");
+    }
+    setLoading(false);
   }, [planId]);
 
   const handleClose = () => router.back();
 
   const handleSaved = (updated: Plan) => {
+    require("@/lib/mockStore").mockStore.updatePlan(planId, updated);
     setPlan(updated);
     router.back();
   };

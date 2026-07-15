@@ -86,17 +86,20 @@ export function WalletModal() {
                               alt={`${wallet.name} icon`}
                               className="w-5 h-5"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = "none";
-                                (e.target as HTMLImageElement).parentElement!.innerHTML = '';
-                                const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-                                svg.setAttribute("class", "w-5 h-5 text-[#92A5A8]");
-                                svg.setAttribute("viewBox", "0 0 24 24");
-                                svg.setAttribute("fill", "none");
-                                svg.setAttribute("stroke", "currentColor");
-                                svg.setAttribute("stroke-width", "2");
-                                svg.innerHTML = '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M16 12h2"/><path d="M6 12h2"/>';
-                                (e.target as HTMLImageElement).parentElement!.appendChild(svg);
-                              }}
+                                 const target = e.target as HTMLImageElement;
+                                 const parent = target.parentElement;
+                                 if (parent) {
+                                   parent.innerHTML = '';
+                                   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                                   svg.setAttribute("class", "w-5 h-5 text-[#92A5A8]");
+                                   svg.setAttribute("viewBox", "0 0 24 24");
+                                   svg.setAttribute("fill", "none");
+                                   svg.setAttribute("stroke", "currentColor");
+                                   svg.setAttribute("stroke-width", "2");
+                                   svg.innerHTML = '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M16 12h2"/><path d="M6 12h2"/>';
+                                   parent.appendChild(svg);
+                                 }
+                               }}
                             />
                           </div>
 

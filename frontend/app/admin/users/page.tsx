@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 import { mockUsers } from "@/lib/mockAdminUsers";
-import { AdminUser, KYCStatus } from "@/lib/adminTypes";
+import { AdminUser, KYCStatus, UserStatus } from "@/lib/adminTypes";
 import { SearchFilterBar } from "@/components/admin/SearchFilterBar";
 import { UserManagementTable } from "@/components/admin/UserManagementTable";
 import { Pagination } from "@/components/admin/Pagination";
@@ -43,7 +43,6 @@ export default function AdminUsersPage() {
         u.id === userId ? { ...u, kycStatus: "approved" as KYCStatus } : u
       )
     );
-    // TODO: await api.approveKYC(userId);
   };
 
   const handleTerminatePlan = async (userId: string) => {
@@ -52,86 +51,46 @@ export default function AdminUsersPage() {
         u.id === userId ? { ...u, activePlansCount: 0 } : u
       )
     );
-    // TODO: await api.terminatePlan(userId);
   };
 
   const handleSuspendUser = async (userId: string) => {
     setUsers((prev) =>
       prev.map((u) =>
         u.id === userId
-          ? { ...u, status: u.status === "active" ? "suspended" : "active" }
+          ? { ...u, status: u.status === "active" ? ("suspended" as UserStatus) : ("active" as UserStatus) }
           : u
       )
     );
-    // TODO: await api.suspendUser(userId);
   };
 
   return (
-    <div className="min-h-screen bg-background p-6 md:p-10">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-foreground">
-          User Management
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Manage users, KYC approvals, and active plans.
-        </p>
+    <div className="animate-fade-in space-y-6 max-w-5xl">
+      <div>
+        <h1 className="text-2xl font-semibold text-white">Users</h1>
+        <p className="text-sm text-slate-500 mt-1">Platform user accounts and KYC oversight</p>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: "Total Users", value: users.length },
-          {
-            label: "KYC Pending",
-            value: users.filter((u) => u.kycStatus === "pending").length,
-          },
-          {
-            label: "Active Users",
-            value: users.filter((u) => u.status === "active").length,
-          },
-          {
-            label: "Suspended",
-            value: users.filter((u) => u.status === "suspended").length,
-          },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-white/3 border border-white/10 rounded-xl px-4 py-4"
-          >
-            <p className="text-xs text-gray-500 mb-1">{stat.label}</p>
-            <p className="text-2xl font-semibold text-foreground">
-              {stat.value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Search & Filter */}
       <SearchFilterBar
         onSearchChange={handleSearchChange}
         onFilterChange={handleFilterChange}
       />
 
-      {/* Results count */}
-      <p className="text-xs text-gray-500 mb-3">
-        Showing {paginated.length} of {filtered.length} users
-      </p>
+      <div className="bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden">
+        <UserManagementTable
+          users={paginated}
+          onApproveKYC={handleApproveKYC}
+          onTerminatePlan={handleTerminatePlan}
+          onSuspendUser={handleSuspendUser}
+        />
+      </div>
 
-      {/* Table */}
-      <UserManagementTable
-        users={paginated}
-        onApproveKYC={handleApproveKYC}
-        onTerminatePlan={handleTerminatePlan}
-        onSuspendUser={handleSuspendUser}
-      />
-
-      {/* Pagination */}
-      <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-      />
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

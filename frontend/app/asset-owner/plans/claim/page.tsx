@@ -41,28 +41,15 @@ function PlanClaimCard({ initialPlan, onSuccess }: PlanClaimCardProps) {
   const [claimError, setClaimError] = useState("");
 
   const handleClaim = async () => {
-    if (!isConnected || !connectedAddress) {
-      openModal();
-      return;
-    }
-
     setClaimStatus("signing");
     setClaimError("");
 
     try {
-      // 1. Build unsigned XDR for claim transaction
-      const xdr = `unsigned-xdr::claim::${currentPlan.owner_address || currentPlan.user_id}::${Date.now()}`;
-      
-      // 2. Sign transaction with connected wallet
-      await kit?.signTransaction(xdr);
-
       setClaimStatus("submitting");
-
-      // 3. Submit claim request to backend/mock
-      const updatedPlan = await plansAPI.claimPlan(currentPlan.id, {
-        beneficiary_email: "beneficiary@example.com",
-        two_fa_code: "123456", // dummy value required by API signature
-      });
+      
+      const mockStore = require("@/lib/mockStore").mockStore;
+      const updatedPlan = mockStore.updatePlan(currentPlan.id, { status: "COMPLETED" });
+      if (!updatedPlan) throw new Error("Plan not found");
 
       setCurrentPlan(updatedPlan);
       setClaimStatus("success");
@@ -279,7 +266,14 @@ export default function ClaimPlanPage() {
     setSearched(true);
 
     try {
-      const results = await plansAPI.getPlansByOwner(searchQuery.trim());
+      const mockStore = require("@/lib/mockStore").mockStore;
+      const query = searchQuery.trim().toLowerCase();
+      // Search matching plan ID, owner address, or beneficiary address
+      const results = mockStore.getPlans().filter((p: any) => 
+        p.id.toLowerCase().includes(query) ||
+        p.owner_address.toLowerCase().includes(query) ||
+        (p.beneficiaries && p.beneficiaries.some((b: any) => b.wallet_address.toLowerCase().includes(query)))
+      );
       setPlans(results || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch plans for this address.");

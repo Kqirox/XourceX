@@ -2,3 +2,16 @@
 rustflags = [
     "-L", "C:\\Users\\USER\\Documents\\Codes\\Stellar\\xourcex\\backend\\.cargo\\lib",
 ]
+
+# ─── Faster incremental builds ────────────────────────────────────────────────
+# Use a smaller debug info level in dev builds to reduce target/ dir size
+# and speed up linking. Change to debug = 2 if you need full debugger support.
+[profile.dev]
+debug = 1            # line tables only (vs default 2); saves ~30% of target/ size
+split-debuginfo = "unpacked"   # faster links on macOS
+
+# ─── Default features shortcut ────────────────────────────────────────────────
+# Contributors can override on the CLI:
+#   cargo build                         → full build (redis + metrics + pdf)
+#   cargo build --no-default-features   → minimal (no redis, no prometheus, no pdf)
+#   cargo build -F redis-cache          → add just redis

@@ -172,34 +172,25 @@ export default function CreateInheritancePlanPage() {
     }
 
     setSubmitMessage("");
-    setSubmissionState(kit && selectedWalletId ? "signing" : "submitting");
+    setSubmissionState("submitting");
 
     try {
-      const contractResult = await invokeCreatePlan({
-        contractInput: {
-          owner: hydratedDraft.owner,
-          token: selectedToken,
-          amount: Number(hydratedDraft.amount),
-          beneficiaries: buildBeneficiaries(),
-          gracePeriodDays: hydratedDraft.gracePeriodDays,
-          earnYield: hydratedDraft.earnYield,
-          timelockDays: hydratedDraft.timelockDays,
-        },
-        kit,
-        selectedWalletId,
+      // Create local mock plan in mockStore
+      const newPlan = require("@/lib/mockStore").mockStore.createPlan({
+        owner_address: hydratedDraft.owner,
+        token_address: selectedToken,
+        amount: Number(hydratedDraft.amount),
+        grace_period_seconds: (hydratedDraft.gracePeriodDays ?? 30) * 86400,
+        earn_yield: hydratedDraft.earnYield,
+        yield_rate_bps: 500, // 5% APY default
+        beneficiaries: buildBeneficiaries().map((b: any) => ({
+          wallet_address: b.address,
+          allocation_bps: b.allocation_bps,
+          fiat_anchor_info: "anchor-ngn",
+        })),
       });
 
-      setSubmissionState("submitting");
-      const created = await inheritanceAPI.createPlan(contractResult.request, {
-        headers: {
-          "X-Contract-Method": "create_plan",
-          ...(contractResult.signedTransactionXdr
-            ? { "X-Signed-Transaction-XDR": contractResult.signedTransactionXdr }
-            : {}),
-        },
-      });
-
-      setCreatedPlanId(created.id);
+      setCreatedPlanId(newPlan.id);
       setSubmissionState("success");
       setSubmitMessage("Inheritance plan created successfully.");
     } catch (error) {

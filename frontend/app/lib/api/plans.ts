@@ -9,6 +9,8 @@ export interface Plan {
   id: string;
   user_id: string;
   owner_address?: string;
+  token_address?: string;
+  amount?: number;
   title: string;
   description?: string;
   fee: number;
@@ -26,6 +28,13 @@ export interface Plan {
   currency_preference?: string;
   created_at: string;
   updated_at: string;
+  // Backend/Soroban specific details
+  accrued_yield?: number;
+  beneficiaries?: any[];
+  grace_period_seconds?: number;
+  yield_rate_bps?: number;
+  earn_yield?: boolean;
+  last_ping?: number;
 }
 
 export interface Beneficiary {

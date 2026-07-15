@@ -88,14 +88,16 @@ export const KYCProvider = ({ children }: { children: React.ReactNode }) => {
     const loadKYCStatus = async () => {
       try {
         setIsLoading(true);
-        const response = await kycAPI.getKYCStatus();
-        setKycResponse(response);
-        setKycStatus(response.kyc_status);
+        const status = require("@/lib/mockStore").mockStore.getKYCStatus() as KYCStatus;
+        setKycStatus(status);
+        setKycResponse({
+          wallet_address: "GDE2KZQ4QGJZ5Z5QW2Y4B7Y6Q5D3P9V8N7M6L5K4J3H2G1FTEST",
+          kyc_status: status,
+          submitted_at: new Date().toISOString(),
+        });
         setError(null);
       } catch (err) {
         console.error("Failed to load KYC status:", err);
-        setError(err instanceof Error ? err.message : "Failed to load KYC status");
-        // Keep using local status on error
       } finally {
         setIsLoading(false);
       }
@@ -103,18 +105,16 @@ export const KYCProvider = ({ children }: { children: React.ReactNode }) => {
 
     loadKYCStatus();
 
-    // Poll for status updates every 10 seconds when modal is open or status is pending
-    const pollInterval = setInterval(async () => {
-      if (kycStatus === "pending" || kycStatus === "submitted") {
-        try {
-          const response = await kycAPI.getKYCStatus();
-          setKycResponse(response);
-          setKycStatus(response.kyc_status);
-        } catch (err) {
-          console.error("Failed to poll KYC status:", err);
-        }
-      }
-    }, 10000);
+    // Poll mockStore for updates
+    const pollInterval = setInterval(() => {
+      const status = require("@/lib/mockStore").mockStore.getKYCStatus() as KYCStatus;
+      setKycStatus(status);
+      setKycResponse({
+        wallet_address: "GDE2KZQ4QGJZ5Z5QW2Y4B7Y6Q5D3P9V8N7M6L5K4J3H2G1FTEST",
+        kyc_status: status,
+        submitted_at: new Date().toISOString(),
+      });
+    }, 5000);
 
     return () => clearInterval(pollInterval);
   }, [kycStatus]);
@@ -132,17 +132,16 @@ export const KYCProvider = ({ children }: { children: React.ReactNode }) => {
   ) => {
     try {
       setError(null);
-      const result = await kycAPI.uploadDocument(file, type);
+      const mockDocId = `doc_${Math.random().toString(36).substr(2, 9)}`;
       const newDocument: UploadedDocument = {
-        id: result.document_id,
+        id: mockDocId,
         type,
         name: file.name,
         uploadedAt: new Date().toISOString(),
       };
       setUploadedDocuments((prev) => [...prev, newDocument]);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to upload document";
-      setError(errorMsg);
+      setError("Failed to upload document");
       throw err;
     }
   };
@@ -151,39 +150,29 @@ export const KYCProvider = ({ children }: { children: React.ReactNode }) => {
     setIsSubmitting(true);
     setError(null);
     try {
-      const idDocId = uploadedDocuments.find((d) => d.type === "id")?.id;
-
-      const response = await kycAPI.submitKYC({
-        fullName: formData.fullName,
-        email: formData.email,
-        dateOfBirth: formData.dateOfBirth,
-        nationality: formData.nationality,
-        idType: formData.idType,
-        idNumber: formData.idNumber,
-        expiryDate: formData.expiryDate,
-        streetAddress: formData.streetAddress,
-        city: formData.city,
-        country: formData.country,
-        postalCode: formData.postalCode,
-        documentId: idDocId,
+      const mockStore = require("@/lib/mockStore").mockStore;
+      mockStore.setKYCStatus("pending");
+      setKycStatus("pending");
+      setKycResponse({
+        wallet_address: "GDE2KZQ4QGJZ5Z5QW2Y4B7Y6Q5D3P9V8N7M6L5K4J3H2G1FTEST",
+        kyc_status: "pending",
+        submitted_at: new Date().toISOString(),
       });
 
-      setKycResponse(response);
-      setKycStatus(response.kyc_status);
+      // Automatically approve after 8 seconds for nice user feedback
+      setTimeout(() => {
+        mockStore.setKYCStatus("approved");
+        setKycStatus("approved");
+      }, 8000);
 
-      // Close modal after submission
       setTimeout(() => {
         closeKYCModal();
       }, 1500);
 
-      // Reset form data
       setFormData(initialFormData);
       setUploadedDocuments([]);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "KYC submission failed";
-      setError(errorMsg);
-      console.error("KYC submission failed:", err);
-      throw err;
+      setError("Failed to submit KYC");
     } finally {
       setIsSubmitting(false);
     }

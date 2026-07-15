@@ -1,11 +1,11 @@
 use crate::api::{PlanQuery, PlanResponse};
-use redis::AsyncCommands;
 use std::collections::{HashMap, HashSet};
 
 const CACHE_NAMESPACE: &str = "plans:v1";
 
 #[derive(Debug)]
 pub enum CacheError {
+    #[cfg(feature = "redis-cache")]
     Redis(redis::RedisError),
     Serialization(serde_json::Error),
 }
@@ -13,6 +13,7 @@ pub enum CacheError {
 impl std::fmt::Display for CacheError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            #[cfg(feature = "redis-cache")]
             Self::Redis(err) => write!(f, "{err}"),
             Self::Serialization(err) => write!(f, "{err}"),
         }
@@ -21,6 +22,7 @@ impl std::fmt::Display for CacheError {
 
 impl std::error::Error for CacheError {}
 
+#[cfg(feature = "redis-cache")]
 impl From<redis::RedisError> for CacheError {
     fn from(value: redis::RedisError) -> Self {
         Self::Redis(value)
@@ -36,10 +38,12 @@ impl From<serde_json::Error> for CacheError {
 #[derive(Clone)]
 pub enum PlanCache {
     Disabled,
+    #[cfg(feature = "redis-cache")]
     Redis(RedisPlanCache),
     Memory(std::sync::Arc<tokio::sync::Mutex<MemoryPlanCache>>),
 }
 
+#[cfg(feature = "redis-cache")]
 #[derive(Clone)]
 pub struct RedisPlanCache {
     client: redis::Client,
@@ -58,13 +62,19 @@ impl PlanCache {
     }
 
     pub fn from_redis_url(redis_url: Option<&str>, ttl_secs: u64) -> Result<Self, CacheError> {
-        match redis_url {
-            Some(url) if !url.trim().is_empty() => {
-                let client = redis::Client::open(url)?;
-                Ok(Self::Redis(RedisPlanCache { client, ttl_secs }))
+        #[cfg(feature = "redis-cache")]
+        {
+            match redis_url {
+                Some(url) if !url.trim().is_empty() => {
+                    let client = redis::Client::open(url).map_err(CacheError::Redis)?;
+                    return Ok(Self::Redis(RedisPlanCache { client, ttl_secs }));
+                }
+                _ => {}
             }
-            _ => Ok(Self::Disabled),
         }
+        // Suppress unused variable warning when redis-cache feature is off
+        let _ = (redis_url, ttl_secs);
+        Ok(Self::Disabled)
     }
 
     pub fn memory() -> Self {
@@ -85,12 +95,16 @@ impl PlanCache {
 
         match self {
             Self::Disabled => Ok(None),
+            #[cfg(feature = "redis-cache")]
             Self::Redis(redis_cache) => {
+                use redis::AsyncCommands;
                 let mut conn = redis_cache
                     .client
                     .get_multiplexed_async_connection()
-                    .await?;
-                let cached: Option<String> = conn.get(cache_key).await?;
+                    .await
+                    .map_err(CacheError::Redis)?;
+                let cached: Option<String> =
+                    conn.get(cache_key).await.map_err(CacheError::Redis)?;
                 match cached {
                     Some(payload) => Ok(Some(serde_json::from_str(&payload)?)),
                     None => Ok(None),
@@ -117,18 +131,28 @@ impl PlanCache {
 
         match self {
             Self::Disabled => Ok(()),
+            #[cfg(feature = "redis-cache")]
             Self::Redis(redis_cache) => {
+                use redis::AsyncCommands;
                 let mut conn = redis_cache
                     .client
                     .get_multiplexed_async_connection()
-                    .await?;
+                    .await
+                    .map_err(CacheError::Redis)?;
                 let _: () = conn
                     .set_ex(&cache_key, serialized, redis_cache.ttl_secs)
-                    .await?;
+                    .await
+                    .map_err(CacheError::Redis)?;
 
                 for index_key in index_keys {
-                    let _: usize = conn.sadd(&index_key, &cache_key).await?;
-                    let _: bool = conn.expire(&index_key, redis_cache.ttl_secs as i64).await?;
+                    let _: usize = conn
+                        .sadd(&index_key, &cache_key)
+                        .await
+                        .map_err(CacheError::Redis)?;
+                    let _: bool = conn
+                        .expire(&index_key, redis_cache.ttl_secs as i64)
+                        .await
+                        .map_err(CacheError::Redis)?;
                 }
 
                 Ok(())
@@ -169,22 +193,26 @@ impl PlanCache {
 
         match self {
             Self::Disabled => Ok(()),
+            #[cfg(feature = "redis-cache")]
             Self::Redis(redis_cache) => {
+                use redis::AsyncCommands;
                 let mut conn = redis_cache
                     .client
                     .get_multiplexed_async_connection()
-                    .await?;
+                    .await
+                    .map_err(CacheError::Redis)?;
                 let mut keys_to_delete: HashSet<String> = HashSet::new();
 
                 for index_key in &index_keys {
-                    let members: Vec<String> = conn.smembers(index_key).await?;
+                    let members: Vec<String> =
+                        conn.smembers(index_key).await.map_err(CacheError::Redis)?;
                     keys_to_delete.extend(members);
                 }
 
                 keys_to_delete.extend(index_keys);
 
                 for key in keys_to_delete {
-                    let _: usize = conn.del(key).await?;
+                    let _: usize = conn.del(key).await.map_err(CacheError::Redis)?;
                 }
 
                 Ok(())

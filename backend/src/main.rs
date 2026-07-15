@@ -1,5 +1,7 @@
+#[cfg(feature = "metrics")]
+use xourcex_backend::metrics;
 use xourcex_backend::{
-    create_router, metrics, telemetry, AppState, Config, DbManager, InactivityWatchdogConfig,
+    create_router, telemetry, AppState, Config, DbManager, InactivityWatchdogConfig,
     InactivityWatchdogService,
 };
 use std::net::SocketAddr;
@@ -12,6 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     telemetry::init_tracing()?;
 
     // Initialize Prometheus metrics
+    #[cfg(feature = "metrics")]
     metrics::init();
 
     //loading the .env
@@ -74,6 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     webhook_dispatcher.start();
 
     // Periodically refresh DB pool metrics
+    #[cfg(feature = "metrics")]
     {
         let pool = db_pool.clone();
         tokio::spawn(async move {

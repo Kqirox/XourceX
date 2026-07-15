@@ -4,14 +4,16 @@ use crate::middleware::{
 };
 use axum::http::{HeaderValue, Method};
 use axum::{
-    body::Body,
     extract::{Path, Query, State},
-    http::{header, header::HeaderName, StatusCode},
+    http::{header::HeaderName, StatusCode},
     middleware::from_fn,
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
+// These imports are only used by the PDF report handler
+#[cfg(feature = "pdf")]
+use axum::{body::Body, http::header};
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -23,6 +25,7 @@ use uuid::Uuid;
 use crate::auth::{jwt_auth_middleware, signature_auth_middleware};
 use crate::cache::PlanCache;
 use crate::kyc_webhook::kyc_webhook_handler;
+#[cfg(feature = "metrics")]
 use crate::metrics::{latency_middleware, metrics_handler};
 use crate::stellar_anchor::AnchorRegistry;
 use crate::ws::ws_handler;
@@ -156,7 +159,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/kyc/required", get(is_kyc_required))
         .route("/api/kyc/requirements", get(get_kyc_requirements))
         .route("/ws/kyc", get(ws_handler));
-    Router::new()
+    let router = Router::new()
         .merge(user_routes)
         .merge(admin_routes)
         .merge(public_routes)
@@ -167,11 +170,14 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .layer(x_content_type_options_layer())
         .layer(x_frame_options_layer())
         .layer(csp_layer())
-        .layer(hsts_layer())
+        .layer(hsts_layer());
+
+    #[cfg(feature = "metrics")]
+    let router = router
         .route("/metrics", get(metrics_handler))
-        .layer(from_fn(latency_middleware))
-        .layer(cors)
-        .with_state(state)
+        .layer(from_fn(latency_middleware));
+
+    router.layer(cors).with_state(state)
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
@@ -1400,6 +1406,7 @@ async fn get_kyc_requirements() -> impl IntoResponse {
 /// Handler: GET /api/plans/:id/report
 /// Generates a PDF audit report for the given plan.
 /// Requires a valid JWT (role = admin) via Bearer token.
+#[cfg(feature = "pdf")]
 pub async fn get_plan_report(
     State(state): State<Arc<AppState>>,
     Path(plan_id): Path<uuid::Uuid>,
@@ -1410,15 +1417,14 @@ pub async fn get_plan_report(
         SELECT id, owner_address, token_address, amount, grace_period,
                grace_period_seconds, earn_yield, last_ping, is_active,
                status, yield_rate_bps, accrued_yield, created_at
-        FROM plans
-        WHERE id = $1
+        FROM plans WHERE id = $1
         "#,
     )
     .bind(plan_id)
     .fetch_optional(&state.db_pool)
     .await
     {
-        Ok(Some(p)) => p,
+        Ok(Some(row)) => row,
         Ok(None) => {
             return (
                 StatusCode::NOT_FOUND,
@@ -1429,7 +1435,7 @@ pub async fn get_plan_report(
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({ "error": format!("Database error: {}", e) })),
+                Json(serde_json::json!({ "error": format!("DB error: {}", e) })),
             )
                 .into_response()
         }
@@ -1535,6 +1541,18 @@ pub async fn get_plan_report(
             ),
         ],
         Body::from(pdf_bytes),
+    )
+        .into_response()
+}
+
+/// Stub handler when PDF feature is disabled at compile time.
+#[cfg(not(feature = "pdf"))]
+pub async fn get_plan_report(_state: State<Arc<AppState>>, _plan_id: Path<uuid::Uuid>) -> Response {
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        Json(serde_json::json!({
+            "error": "PDF report generation is not enabled in this build. Recompile with --features pdf."
+        })),
     )
         .into_response()
 }

@@ -1,18 +1,11 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import withBundleAnalyzer from "@next/bundle-analyzer";
-import withPWAInit from "@ducanh2912/next-pwa";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const withBundleAnalyzerConfig = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
-});
-
-const withPWA = withPWAInit({
-  dest: "public",
-  disable: process.env.NODE_ENV === "development",
-  register: true,
 });
 
 /**
@@ -44,6 +37,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Only transpile allbridge if it is installed (optional dep).
+  // Next.js silently ignores transpilePackages entries for missing modules.
   transpilePackages: ["@allbridge/bridge-core-sdk"],
   images: {
     remotePatterns: [
@@ -73,4 +68,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzerConfig(withPWA(withNextIntl(nextConfig)));
+// Compile time dynamic require check for optional PWA dependency
+let withPWA = (config: any) => config;
+if (process.env.NODE_ENV !== "development") {
+  try {
+    const withPWAInit = require("@ducanh2912/next-pwa");
+    const pwaWrapper = withPWAInit.default || withPWAInit;
+    withPWA = pwaWrapper({
+      dest: "public",
+      register: true,
+    });
+  } catch (e) {
+    // optional dependency not installed
+  }
+}
+
+const resolvedConfig = withPWA(withBundleAnalyzerConfig(withNextIntl(nextConfig)));
+export default resolvedConfig;
