@@ -312,7 +312,10 @@ mod tests {
         let one_year = 365 * SECONDS_PER_DAY;
         let value = compound_yield(principal, 500, one_year).unwrap();
         // Daily compounding at 5% APY lands between simple 5% and 5.2%
-        assert!(value > 1_050_000_000, "compounding must beat simple interest");
+        assert!(
+            value > 1_050_000_000,
+            "compounding must beat simple interest"
+        );
         assert!(value < 1_052_000_000, "5% APY cannot exceed 5.2% in a year");
     }
 

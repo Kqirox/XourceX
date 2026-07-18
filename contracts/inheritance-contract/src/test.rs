@@ -1593,7 +1593,13 @@ fn setup_yield_plan<'a>(
         &String::from_str(env, "SRC_TX_HASH"),
     );
 
-    (client, token_client, owner, beneficiary_address, contract_id)
+    (
+        client,
+        token_client,
+        owner,
+        beneficiary_address,
+        contract_id,
+    )
 }
 
 #[test]
@@ -1684,8 +1690,7 @@ fn test_ping_checkpoints_and_keeps_compounding_on_new_base() {
 
     // Checkpoint at day 100, then compounding continues on principal + accrued
     let first_leg = safe_math::accrued_interest(principal, 500, 100 * DAY).unwrap();
-    let second_leg =
-        safe_math::accrued_interest(principal + first_leg, 500, 100 * DAY).unwrap();
+    let second_leg = safe_math::accrued_interest(principal + first_leg, 500, 100 * DAY).unwrap();
     assert_eq!(accrued, first_leg + second_leg);
 
     // Within integer-rounding distance of one uninterrupted 200-day stretch
@@ -1717,8 +1722,7 @@ fn test_ping_emits_yield_event_when_interest_accrued() {
     let start = 1_000_000u64;
     env.ledger().set_timestamp(start);
     let principal: i128 = 1_000_000_000;
-    let (client, _token, owner, _bene, contract_id) =
-        setup_yield_plan(&env, principal, true, 500);
+    let (client, _token, owner, _bene, contract_id) = setup_yield_plan(&env, principal, true, 500);
 
     let ping_ts = start + 10 * DAY;
     env.ledger().set_timestamp(ping_ts);
@@ -1828,7 +1832,10 @@ fn test_create_plan_allocation_bps_overflow_returns_invalid_basis_points() {
         &1000,
         &Vec::from_array(
             &env,
-            [make_beneficiary(3_000_000_000), make_beneficiary(3_000_000_000)],
+            [
+                make_beneficiary(3_000_000_000),
+                make_beneficiary(3_000_000_000),
+            ],
         ),
         &3600,
         &false,
@@ -1899,8 +1906,7 @@ fn test_update_plan_applies_new_rate_only_forward() {
 
     // First 100 days at the old 5% rate, next 100 days at 10% on the new base
     let first_leg = safe_math::accrued_interest(principal, 500, 100 * DAY).unwrap();
-    let second_leg =
-        safe_math::accrued_interest(principal + first_leg, 1000, 100 * DAY).unwrap();
+    let second_leg = safe_math::accrued_interest(principal + first_leg, 1000, 100 * DAY).unwrap();
     assert_eq!(accrued, first_leg + second_leg);
 }
 
@@ -2065,9 +2071,18 @@ fn test_simulate_compound_matches_safe_math_and_validates() {
     let client = InheritanceContractClient::new(&env, &contract_id);
 
     let expected = safe_math::compound_yield(1_000_000_000, 500, 365 * DAY).unwrap();
-    assert_eq!(client.simulate_compound(&1_000_000_000, &500, &365), expected);
-    assert_eq!(client.simulate_compound(&1_000_000_000, &500, &0), 1_000_000_000);
-    assert_eq!(client.simulate_compound(&1_000_000_000, &0, &365), 1_000_000_000);
+    assert_eq!(
+        client.simulate_compound(&1_000_000_000, &500, &365),
+        expected
+    );
+    assert_eq!(
+        client.simulate_compound(&1_000_000_000, &500, &0),
+        1_000_000_000
+    );
+    assert_eq!(
+        client.simulate_compound(&1_000_000_000, &0, &365),
+        1_000_000_000
+    );
 
     assert_eq!(
         client.try_simulate_compound(&1_000, &(safe_math::MAX_YIELD_RATE_BPS + 1), &10),
@@ -2138,7 +2153,10 @@ fn test_get_yield_at_matches_get_accrued_yield_for_current_timestamp() {
     let now = start + 90 * DAY;
     env.ledger().set_timestamp(now);
 
-    assert_eq!(client.get_yield_at(&owner, &now), client.get_accrued_yield(&owner));
+    assert_eq!(
+        client.get_yield_at(&owner, &now),
+        client.get_accrued_yield(&owner)
+    );
 }
 
 #[test]
