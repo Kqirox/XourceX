@@ -74,7 +74,7 @@ fn test_create_plan_success() {
         &token_id,
         &1500,
         &Vec::from_array(&env, [beneficiary.clone()]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -91,7 +91,7 @@ fn test_create_plan_success() {
     assert_eq!(plan.owner, owner);
     assert_eq!(plan.token, token_id);
     assert_eq!(plan.amount, 1500);
-    assert_eq!(plan.grace_period, 3600);
+    assert_eq!(plan.grace_period, 86_400);
     assert!(plan.earn_yield);
     assert_eq!(plan.yield_rate_bps, 500);
     assert!(plan.is_active);
@@ -133,7 +133,7 @@ fn test_ping_updates_last_ping_and_emits_event() {
         &token_id,
         &1500,
         &Vec::from_array(&env, [beneficiary]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -183,7 +183,7 @@ fn test_ping_requires_owner_auth() {
         amount: 1,
         beneficiaries: Vec::new(&env),
         last_ping: env.ledger().timestamp(),
-        grace_period: 3600,
+        grace_period: 86_400,
         earn_yield: false,
         yield_rate_bps: 0,
         is_active: true,
@@ -227,7 +227,7 @@ fn test_create_plan_insufficient_balance() {
         &token_id,
         &1500,
         &Vec::from_array(&env, [beneficiary.clone()]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -266,7 +266,7 @@ fn test_create_plan_negative_or_zero_amount() {
         &token_id,
         &0,
         &Vec::from_array(&env, [beneficiary.clone()]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -281,7 +281,7 @@ fn test_create_plan_negative_or_zero_amount() {
         &token_id,
         &-10,
         &Vec::from_array(&env, [beneficiary.clone()]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -326,7 +326,7 @@ fn test_create_plan_invalid_basis_points() {
         &token_id,
         &500,
         &Vec::from_array(&env, [beneficiary1, beneficiary2]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -335,6 +335,44 @@ fn test_create_plan_invalid_basis_points() {
     );
 
     assert_eq!(result, Err(Ok(Error::InvalidBasisPoints)));
+}
+
+#[test]
+fn test_create_plan_rejects_grace_period_shorter_than_24_hours() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register_contract(None, InheritanceContract);
+    let client = InheritanceContractClient::new(&env, &contract_id);
+
+    let token_id = env.register_contract(None, mock_token::MockToken);
+    let token_client = mock_token::MockTokenClient::new(&env, &token_id);
+
+    let owner = Address::generate(&env);
+    token_client.mint(&owner, &1000);
+
+    let beneficiary = Beneficiary {
+        address: Address::generate(&env),
+        allocation_bps: 10000,
+        fiat_anchor_info: String::from_str(&env, "NGN_BANK"),
+        destination_chain: String::from_str(&env, "Stellar"),
+        destination_address: String::from_str(&env, "GDESTADDR"),
+    };
+
+    let result = client.try_create_plan(
+        &owner,
+        &token_id,
+        &500,
+        &Vec::from_array(&env, [beneficiary]),
+        &86399,
+        &true,
+        &500,
+        &86400,
+        &String::from_str(&env, "Stellar"),
+        &String::from_str(&env, "SRC_TX_HASH"),
+    );
+
+    assert_eq!(result, Err(Ok(Error::InvalidGracePeriod)));
 }
 
 #[test]
@@ -365,7 +403,7 @@ fn test_create_plan_already_exists() {
         &token_id,
         &500,
         &Vec::from_array(&env, [beneficiary.clone()]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -379,7 +417,7 @@ fn test_create_plan_already_exists() {
         &token_id,
         &500,
         &Vec::from_array(&env, [beneficiary.clone()]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -421,7 +459,7 @@ fn test_trigger_payout_single_beneficiary() {
         &token_id,
         &1500,
         &Vec::from_array(&env, [b]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -433,7 +471,7 @@ fn test_trigger_payout_single_beneficiary() {
     deactivate_plan_for_testing(&env, &contract_id, &owner);
 
     // Jump past grace period
-    env.ledger().set_timestamp(start + 4000);
+    env.ledger().set_timestamp(start + 86_400 + 1);
 
     // Trigger payout
     client.claim(&owner);
@@ -495,7 +533,7 @@ fn test_trigger_payout_multiple_beneficiaries() {
         &token_id,
         &1000,
         &Vec::from_array(&env, [alice_bene, bob_bene, charlie_bene]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -505,7 +543,7 @@ fn test_trigger_payout_multiple_beneficiaries() {
 
     // Deactivate plan to start grace period
     deactivate_plan_for_testing(&env, &contract_id, &owner);
-    env.ledger().set_timestamp(1_000_000 + 4000);
+    env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
 
     client.claim(&owner);
     env.ledger().set_timestamp(env.ledger().timestamp() + 86400);
@@ -548,7 +586,7 @@ fn test_beneficiary_paid_status_before_and_after_full_payout() {
         &token_id,
         &1000,
         &Vec::from_array(&env, [b]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -559,7 +597,7 @@ fn test_beneficiary_paid_status_before_and_after_full_payout() {
     assert!(!client.is_beneficiary_paid(&owner, &beneficiary));
 
     deactivate_plan_for_testing(&env, &contract_id, &owner);
-    env.ledger().set_timestamp(1_004_000);
+    env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
     client.claim(&owner);
     env.ledger().set_timestamp(env.ledger().timestamp() + 86400);
     client.trigger_payout(&owner);
@@ -610,7 +648,7 @@ fn test_trigger_payout_skips_beneficiary_paid_by_prior_attempt() {
         &token_id,
         &1000,
         &beneficiaries,
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -633,7 +671,7 @@ fn test_trigger_payout_skips_beneficiary_paid_by_prior_attempt() {
     assert!(!client.is_beneficiary_paid(&owner, &bob));
 
     deactivate_plan_for_testing(&env, &contract_id, &owner);
-    env.ledger().set_timestamp(1_004_000);
+    env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
     client.claim(&owner);
     env.ledger().set_timestamp(env.ledger().timestamp() + 86400);
     client.trigger_payout(&owner);
@@ -684,7 +722,7 @@ fn test_trigger_payout_dust_goes_to_last_beneficiary() {
         &token_id,
         &100,
         &Vec::from_array(&env, [bene_a, bene_b]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -694,7 +732,7 @@ fn test_trigger_payout_dust_goes_to_last_beneficiary() {
 
     // Deactivate plan to start grace period
     deactivate_plan_for_testing(&env, &contract_id, &owner);
-    env.ledger().set_timestamp(1_000_000 + 4000);
+    env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
 
     client.claim(&owner);
     env.ledger().set_timestamp(env.ledger().timestamp() + 86400);
@@ -738,7 +776,7 @@ fn test_trigger_payout_plan_still_active() {
         &token_id,
         &500,
         &Vec::from_array(&env, [b]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -747,7 +785,7 @@ fn test_trigger_payout_plan_still_active() {
     );
 
     // Plan is still active — deactivate_plan_for_testing was never called
-    env.ledger().set_timestamp(1_000_000 + 4000);
+    env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
 
     let result = client.try_claim(&owner);
     assert_eq!(result, Err(Ok(Error::InactivityPeriodNotMet)));
@@ -784,7 +822,7 @@ fn test_trigger_payout_grace_period_not_met() {
         &token_id,
         &500,
         &Vec::from_array(&env, [b]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -795,8 +833,8 @@ fn test_trigger_payout_grace_period_not_met() {
     // Deactivate plan to start grace period
     deactivate_plan_for_testing(&env, &contract_id, &owner);
 
-    // Only 1000 seconds passed — need 3600
-    env.ledger().set_timestamp(1_000_000 + 1000);
+    // Only 86_399 seconds passed — need 86_400
+    env.ledger().set_timestamp(1_000_000 + 86_400 - 1);
 
     let result = client.try_claim(&owner);
     assert_eq!(result, Err(Ok(Error::InactivityPeriodNotMet)));
@@ -833,7 +871,7 @@ fn test_trigger_payout_double_payout_prevented() {
         &token_id,
         &500,
         &Vec::from_array(&env, [b]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -843,7 +881,7 @@ fn test_trigger_payout_double_payout_prevented() {
 
     // Deactivate plan to start grace period
     deactivate_plan_for_testing(&env, &contract_id, &owner);
-    env.ledger().set_timestamp(1_000_000 + 4000);
+    env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
 
     // First payout succeeds
     client.claim(&owner);
@@ -902,7 +940,7 @@ fn test_cancel_claim_success() {
         &token_id,
         &500,
         &Vec::from_array(&env, [b]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -912,7 +950,7 @@ fn test_cancel_claim_success() {
 
     // Deactivate plan to start grace period
     deactivate_plan_for_testing(&env, &contract_id, &owner);
-    env.ledger().set_timestamp(start + 4000);
+    env.ledger().set_timestamp(start + 86_400 + 1);
 
     // Trigger payout
     client.claim(&owner);
@@ -958,7 +996,7 @@ fn test_reclaim_success() {
         &token_id,
         &500,
         &Vec::from_array(&env, [b]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -1009,7 +1047,7 @@ fn test_ping_success_from_owner_updates_timestamp() {
         &token_id,
         &3000,
         &Vec::from_array(&env, [beneficiary]),
-        &7200,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -1032,7 +1070,7 @@ fn test_ping_success_from_owner_updates_timestamp() {
 
     // Owner is still within grace period
     let timeout_deadline = client.try_get_timeout_deadline(&owner);
-    assert_eq!(timeout_deadline, Ok(Ok(ping_time + 7200)));
+    assert_eq!(timeout_deadline, Ok(Ok(ping_time + 86_400)));
 }
 
 #[test]
@@ -1066,7 +1104,7 @@ fn test_ping_from_third_party_fails() {
         &token_id,
         &2000,
         &Vec::from_array(&env, [beneficiary]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -1137,7 +1175,7 @@ fn test_close_plan_refunds_all_tokens_and_deletes_storage() {
         &token_id,
         &plan_amount,
         &Vec::from_array(&env, [bene1, bene2]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -1190,7 +1228,7 @@ fn test_close_plan_requires_owner_auth() {
         &token_id,
         &2000,
         &Vec::from_array(&env, [beneficiary]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -1288,7 +1326,7 @@ fn test_trigger_payout_5_beneficiaries_with_equal_allocations() {
         &token_id,
         &10000,
         &Vec::from_array(&env, [bene1, bene2, bene3, bene4, bene5]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -1298,7 +1336,7 @@ fn test_trigger_payout_5_beneficiaries_with_equal_allocations() {
 
     // Deactivate, claim, and payout
     deactivate_plan_for_testing(&env, &contract_id, &owner);
-    env.ledger().set_timestamp(1_000_000 + 4000);
+    env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
 
     client.claim(&owner);
     env.ledger().set_timestamp(env.ledger().timestamp() + 86400);
@@ -1361,7 +1399,7 @@ fn test_trigger_payout_10_beneficiaries_unequal_allocations() {
         &token_id,
         &plan_amount,
         &bene_array,
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -1371,7 +1409,7 @@ fn test_trigger_payout_10_beneficiaries_unequal_allocations() {
 
     // Deactivate, claim, and payout
     deactivate_plan_for_testing(&env, &contract_id, &owner);
-    env.ledger().set_timestamp(1_000_000 + 4000);
+    env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
 
     client.claim(&owner);
     env.ledger().set_timestamp(env.ledger().timestamp() + 86400);
@@ -1432,7 +1470,7 @@ fn test_trigger_payout_rounding_with_3_beneficiaries() {
         &token_id,
         &1000,
         &Vec::from_array(&env, [b1, b2, b3]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -1441,7 +1479,7 @@ fn test_trigger_payout_rounding_with_3_beneficiaries() {
     );
 
     deactivate_plan_for_testing(&env, &contract_id, &owner);
-    env.ledger().set_timestamp(1_000_000 + 4000);
+    env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
 
     client.claim(&owner);
     env.ledger().set_timestamp(env.ledger().timestamp() + 86400);
@@ -1488,7 +1526,7 @@ fn test_trigger_payout_after_grace_period_and_timelock_expiry() {
         destination_address: String::from_str(&env, "GDESTADDR"),
     };
 
-    let grace_period = 7200; // 2 hours
+    let grace_period = 86_400; // 24 hours
     let timelock_duration = 86400; // 1 day
 
     let start = 1_000_000;
@@ -1568,7 +1606,7 @@ fn test_trigger_payout_with_single_beneficiary_receives_all() {
         &token_id,
         &plan_amount,
         &Vec::from_array(&env, [sole_bene]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -1577,7 +1615,7 @@ fn test_trigger_payout_with_single_beneficiary_receives_all() {
     );
 
     deactivate_plan_for_testing(&env, &contract_id, &owner);
-    env.ledger().set_timestamp(1_000_000 + 4000);
+    env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
 
     client.claim(&owner);
     env.ledger().set_timestamp(env.ledger().timestamp() + 86400);
@@ -1634,7 +1672,7 @@ fn test_create_plan_stores_all_fields_with_multiple_beneficiaries() {
         &token_id,
         &5000,
         &Vec::from_array(&env, [alice_bene.clone(), bob_bene.clone()]),
-        &7200,
+        &86_400,
         &true,
         &300,
         &172800,
@@ -1651,7 +1689,7 @@ fn test_create_plan_stores_all_fields_with_multiple_beneficiaries() {
     assert_eq!(plan.owner, owner);
     assert_eq!(plan.token, token_id);
     assert_eq!(plan.amount, 5000);
-    assert_eq!(plan.grace_period, 7200);
+    assert_eq!(plan.grace_period, 86_400);
     assert!(plan.earn_yield);
     assert_eq!(plan.yield_rate_bps, 300);
     assert_eq!(plan.timelock_duration, 172800);
@@ -1728,7 +1766,7 @@ fn setup_yield_plan<'a>(
         &token_id,
         &amount,
         &Vec::from_array(env, [beneficiary]),
-        &3600,
+        &86_400,
         &earn_yield,
         &yield_rate_bps,
         &86400,
@@ -1922,7 +1960,7 @@ fn test_create_plan_rejects_excessive_yield_rate() {
         &token_id,
         &1500,
         &Vec::from_array(&env, [beneficiary]),
-        &3600,
+        &86_400,
         &true,
         &(safe_math::MAX_YIELD_RATE_BPS + 1),
         &86400,
@@ -1985,7 +2023,7 @@ fn test_create_plan_allocation_bps_overflow_returns_invalid_basis_points() {
                 make_beneficiary(3_000_000_000),
             ],
         ),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -2092,7 +2130,7 @@ fn test_close_plan_clears_yield_state() {
         &token_client.address,
         &principal,
         &Vec::from_array(&env, [beneficiary]),
-        &3600,
+        &86_400,
         &true,
         &500,
         &86400,
@@ -2420,7 +2458,7 @@ fn test_create_plan_emits_plan_create_event() {
         &token_id,
         &amount,
         &Vec::from_array(&env, [beneficiary]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -2510,7 +2548,7 @@ fn test_bridge_payout_event_emits_exact_validator_payload() {
         &token_id,
         &amount,
         &Vec::from_array(&env, [b]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -2518,7 +2556,7 @@ fn test_bridge_payout_event_emits_exact_validator_payload() {
         &source_tx_hash,
     );
 
-    advance_plan_to_payout(&env, &client, &contract_id, &owner, start, 3600, 86400);
+    advance_plan_to_payout(&env, &client, &contract_id, &owner, start, 86_400, 86400);
 
     client.trigger_payout(&owner);
 
@@ -2627,7 +2665,7 @@ fn test_bridge_payout_event_not_emitted_for_stellar_destination() {
         &token_id,
         &amount,
         &Vec::from_array(&env, [b]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -2635,7 +2673,7 @@ fn test_bridge_payout_event_not_emitted_for_stellar_destination() {
         &String::from_str(&env, "SRC_TX_HASH"),
     );
 
-    advance_plan_to_payout(&env, &client, &contract_id, &owner, start, 3600, 86400);
+    advance_plan_to_payout(&env, &client, &contract_id, &owner, start, 86_400, 86400);
     client.trigger_payout(&owner);
 
     // Stellar destinations are zero-fee and must not emit BridgePay.
@@ -2710,7 +2748,7 @@ fn test_bridge_payout_event_multiple_non_stellar_beneficiaries() {
         &token_id,
         &amount,
         &Vec::from_array(&env, [alice_bene, bob_bene, charlie_bene]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -2718,7 +2756,7 @@ fn test_bridge_payout_event_multiple_non_stellar_beneficiaries() {
         &source_tx_hash,
     );
 
-    advance_plan_to_payout(&env, &client, &contract_id, &owner, start, 3600, 86400);
+    advance_plan_to_payout(&env, &client, &contract_id, &owner, start, 86_400, 86400);
     client.trigger_payout(&owner);
 
     let alice_gross = 5_000;
@@ -2845,7 +2883,7 @@ fn test_bridge_payout_event_only_for_non_stellar_in_mixed_plan() {
         &token_id,
         &amount,
         &Vec::from_array(&env, [on_stellar, on_ethereum]),
-        &3600,
+        &86_400,
         &false,
         &0,
         &86400,
@@ -2853,7 +2891,7 @@ fn test_bridge_payout_event_only_for_non_stellar_in_mixed_plan() {
         &source_tx_hash,
     );
 
-    advance_plan_to_payout(&env, &client, &contract_id, &owner, start, 3600, 86400);
+    advance_plan_to_payout(&env, &client, &contract_id, &owner, start, 86_400, 86400);
     client.trigger_payout(&owner);
 
     let stellar_share = 6_000;
