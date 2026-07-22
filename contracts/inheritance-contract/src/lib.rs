@@ -620,20 +620,25 @@ impl InheritanceContract {
         Ok(())
     }
 
-    /// Distribute the full yield-bearing inheritance to Stellar-native beneficiaries.
+    /// Distribute the full yield-bearing inheritance to every beneficiary.
     ///
-    /// This function is the Stellar-specific payout path: it computes the total
-    /// claimable amount as `principal + all accrued yield`, then iterates over
-    /// every beneficiary whose `destination_chain` is `"Stellar"` and transfers
-    /// their pro-rata share (computed via `allocation_bps / 10 000`) directly to
-    /// their on-chain `address`.  Non-Stellar beneficiaries (cross-chain bridge
-    /// destinations) are intentionally skipped — they are handled by the separate
-    /// bridge settlement flow in `trigger_payout`.
+    /// This function computes the total claimable amount as
+    /// `principal + all accrued yield`, then iterates over every beneficiary and
+    /// settles their pro-rata share (computed via `allocation_bps / 10 000`)
+    /// according to their `destination_chain`:
     ///
-    /// Dust from integer-division rounding is absorbed by the last Stellar
-    /// beneficiary in the list, ensuring the contract never retains stranded
-    /// tokens.  A `StelPay` event is emitted for every beneficiary paid so that
-    /// off-chain indexers can track individual settlement receipts.
+    /// * **Stellar-native** beneficiaries receive a direct on-chain token
+    ///   transfer to their `address`, and a `StelPay` event is emitted.
+    /// * **Cross-chain** beneficiaries (any `destination_chain` other than
+    ///   `"Stellar"`) are settled by *burning* their share of the wrapped token
+    ///   held by the contract and emitting a `BridgePayoutEvent` carrying the
+    ///   full bridge transfer data (`destination_chain`, `destination_address`,
+    ///   gross/net amounts, and the plan's source-chain provenance). The
+    ///   off-chain bridge consumes this event to release the equivalent value on
+    ///   the destination chain.
+    ///
+    /// Dust from integer-division rounding is absorbed by the last beneficiary in
+    /// the list, ensuring the contract never retains stranded tokens.
     ///
     /// # Preconditions
     /// * A `claim` must have been registered for `owner` (i.e. `ClaimStatus`
@@ -681,45 +686,31 @@ impl InheritanceContract {
         let total_payout = safe_math::safe_add(plan.amount, total_yield)?;
 
         let token_client = soroban_sdk::token::Client::new(&env, &plan.token);
-        let stellar_str = String::from_str(&env, STELLAR_CHAIN);
 
-        // Collect Stellar-native beneficiaries so we can handle dust correctly.
-        let mut stellar_beneficiaries: Vec<Beneficiary> = Vec::new(&env);
-        for beneficiary in plan.beneficiaries.iter() {
-            if beneficiary.destination_chain == stellar_str {
-                stellar_beneficiaries.push_back(beneficiary);
-            }
-        }
-
-        let n = stellar_beneficiaries.len();
+        let n = plan.beneficiaries.len();
         if n == 0 {
-            // No Stellar beneficiaries in this plan. Nothing for this function
-            // to distribute — the plan/claim state is intentionally preserved
-            // so the bridge settlement path (trigger_payout) can still execute.
+            // Defensive: a plan with no beneficiaries has nothing to distribute.
+            // Tear down the plan state so it cannot be re-claimed and return.
+            env.storage().persistent().remove(&key);
+            env.storage().persistent().remove(&claim_key);
+            Self::clear_yield_state(&env, &owner);
             return Ok(());
         }
 
         // Checks-effects-interactions: remove plan state before any token
-        // transfers to guard against re-entrancy and double-payout.
+        // transfers or burns to guard against re-entrancy and double-payout.
         env.storage().persistent().remove(&key);
         env.storage().persistent().remove(&claim_key);
         Self::clear_yield_state(&env, &owner);
 
-        // Determine whether all beneficiaries are Stellar-native. When they
-        // are, the last Stellar beneficiary absorbs integer-division dust so
-        // the contract never retains stranded tokens. In a mixed plan the
-        // non-Stellar portion remains in the contract for bridge settlement,
-        // so each Stellar beneficiary receives exactly their bps-computed share.
-        let all_stellar = plan.beneficiaries.len() == n;
-
-        // `remaining` tracks undistributed Stellar tokens. For a pure-Stellar
-        // plan it starts at total_payout; for a mixed plan we compute a running
-        // subtraction but the last beneficiary still uses apply_bps, not remaining.
+        // `remaining` tracks the yet-undistributed balance. The final
+        // beneficiary in the list absorbs any integer-division dust so the
+        // contract never retains stranded tokens once every share is settled.
         let mut remaining = total_payout;
 
-        for (i, beneficiary) in stellar_beneficiaries.iter().enumerate() {
-            let share = if all_stellar && i == (n - 1) as usize {
-                // Pure-Stellar plan: last beneficiary absorbs rounding dust.
+        for (i, beneficiary) in plan.beneficiaries.iter().enumerate() {
+            let share = if i == (n - 1) as usize {
+                // Last beneficiary absorbs rounding dust.
                 remaining
             } else {
                 let s = safe_math::apply_bps(total_payout, beneficiary.allocation_bps)?;
@@ -733,25 +724,46 @@ impl InheritanceContract {
                 continue;
             }
 
-            // Direct transfer to the beneficiary's Stellar address.
-            token_client.transfer(
-                &env.current_contract_address(),
-                &beneficiary.address,
-                &share,
-            );
+            if Self::is_stellar_chain(&beneficiary.destination_chain, &env) {
+                // Stellar-native: direct on-chain transfer to the beneficiary,
+                // plus a per-beneficiary settlement event for off-chain indexers.
+                token_client.transfer(
+                    &env.current_contract_address(),
+                    &beneficiary.address,
+                    &share,
+                );
+                env.events().publish(
+                    (symbol_short!("StelPay"), owner.clone()),
+                    (beneficiary.address.clone(), share),
+                );
+            } else {
+                // Cross-chain: burn the beneficiary's share of the wrapped token
+                // held by the contract and emit a BridgePayoutEvent so the
+                // off-chain bridge can release the equivalent value on the
+                // destination chain.
+                token_client.burn(&env.current_contract_address(), &share);
+                let event = BridgePayoutEvent {
+                    owner: plan.owner.clone(),
+                    token: plan.token.clone(),
+                    beneficiary: beneficiary.address.clone(),
+                    destination_chain: beneficiary.destination_chain.clone(),
+                    destination_address: beneficiary.destination_address.clone(),
+                    gross_amount: share,
+                    fee_amount: 0,
+                    net_amount: share,
+                    source_chain: plan.source_chain.clone(),
+                    source_tx_hash: plan.source_tx_hash.clone(),
+                };
+                Self::emit_bridge_payout_event(&env, event);
+            }
+
             env.storage().persistent().set(&paid_key, &true);
             Self::extend_plan_ttl(&env, &paid_key);
-
-            // Emit a per-beneficiary settlement event for off-chain indexers.
-            env.events().publish(
-                (symbol_short!("StelPay"), owner.clone()),
-                (beneficiary.address.clone(), share),
-            );
         }
 
-        // Clean up per-beneficiary paid markers once the full Stellar payout is
-        // complete, so stale state cannot bleed into a future plan by the same owner.
-        for beneficiary in stellar_beneficiaries.iter() {
+        // Clean up per-beneficiary paid markers once the full payout is complete,
+        // so stale state cannot bleed into a future plan by the same owner.
+        for beneficiary in plan.beneficiaries.iter() {
             env.storage().persistent().remove(&DataKey::PaidBeneficiary(
                 owner.clone(),
                 beneficiary.address,

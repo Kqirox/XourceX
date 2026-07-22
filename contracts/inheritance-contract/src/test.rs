@@ -3305,10 +3305,11 @@ fn test_claim_payout_five_equal_stellar_beneficiaries() {
     assert_eq!(token_client.balance(&contract_id), 0);
 }
 
-/// claim_payout skips non-Stellar beneficiaries: only the Stellar wallet
-/// receives tokens; the non-Stellar beneficiary share stays in the contract.
+/// claim_payout settles a mixed plan: the Stellar beneficiary receives a direct
+/// transfer while the non-Stellar beneficiary's share is burned and surfaced as
+/// a BridgePayoutEvent for off-chain bridge settlement.
 #[test]
-fn test_claim_payout_skips_non_stellar_beneficiaries() {
+fn test_claim_payout_burns_and_bridges_non_stellar_beneficiaries() {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().set_timestamp(1_000_000);
@@ -3343,17 +3344,47 @@ fn test_claim_payout_skips_non_stellar_beneficiaries() {
         Vec::from_array(&env, [bene_stellar, bene_bridge]),
     );
 
+    let token_id = token_client.address.clone();
+    let supply_before = token_client.total_supply();
+
     client.claim_payout(&owner);
 
-    // Stellar beneficiary gets their 60 % share (they are the only "last"
-    // Stellar beneficiary so remaining == 10_000 as well; but allocation_bps
-    // is applied on total_payout before the last-beneficiary-dust shortcut,
-    // because n == 1 for Stellar beneficiaries).
+    // Stellar beneficiary receives their 60 % share via direct transfer.
     assert_eq!(token_client.balance(&stellar_bene), 6_000);
-    // Bridge beneficiary is not paid by claim_payout; their share stays locked.
+    // The bridge beneficiary's 40 % share is burned, not transferred: they hold
+    // nothing on Stellar and the contract retains no stranded tokens.
     assert_eq!(token_client.balance(&bridge_bene), 0);
-    // Remaining 40 % stays in the contract for the bridge settlement path.
-    assert_eq!(token_client.balance(&contract_id), 4_000);
+    assert_eq!(token_client.balance(&contract_id), 0);
+    // Burning the bridged share reduces total supply by exactly that amount.
+    assert_eq!(token_client.total_supply(), supply_before - 4_000);
+
+    // A BridgePayoutEvent carries the bridge transfer data for the burned share.
+    let expected = BridgePayoutEvent {
+        owner: owner.clone(),
+        token: token_id.clone(),
+        beneficiary: bridge_bene.clone(),
+        destination_chain: String::from_str(&env, "Ethereum"),
+        destination_address: String::from_str(&env, "0xBridgeDest"),
+        gross_amount: 4_000,
+        fee_amount: 0,
+        net_amount: 4_000,
+        source_chain: String::from_str(&env, "Stellar"),
+        source_tx_hash: String::from_str(&env, "SRC_TX_HASH"),
+    };
+    let bridge_event = env
+        .events()
+        .all()
+        .iter()
+        .find(|(emitter, topics, _)| {
+            *emitter == contract_id
+                && *topics == (symbol_short!("BridgePay"), contract_id.clone()).into_val(&env)
+        })
+        .expect("BridgePayoutEvent should be emitted for the non-Stellar beneficiary");
+    let payload = BridgePayoutEvent::from_val(&env, &bridge_event.2);
+    assert_eq!(payload, expected);
+
+    // Plan storage is removed after the full payout completes.
+    assert_eq!(client.get_plan(&owner), None);
 }
 
 /// claim_payout fails with PayoutNotTriggered if claim() was never called.
@@ -3519,9 +3550,10 @@ fn test_claim_payout_emits_stellar_payout_events() {
     assert_eq!(paid_amount2, 300); // remainder
 }
 
-/// A plan with no Stellar beneficiaries returns Ok without transferring anything.
+/// A plan with only cross-chain beneficiaries burns the full principal and
+/// emits a BridgePayoutEvent for each, then tears down the plan.
 #[test]
-fn test_claim_payout_no_op_when_no_stellar_beneficiaries() {
+fn test_claim_payout_burns_full_amount_for_all_cross_chain_plan() {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().set_timestamp(1_000_000);
@@ -3543,6 +3575,7 @@ fn test_claim_payout_no_op_when_no_stellar_beneficiaries() {
 
     let owner = Address::generate(&env);
     token_client.mint(&owner, &principal);
+    let supply_before = token_client.total_supply();
 
     let b = Beneficiary {
         address: bridge_bene.clone(),
@@ -3571,16 +3604,39 @@ fn test_claim_payout_no_op_when_no_stellar_beneficiaries() {
     env.ledger()
         .set_timestamp(env.ledger().timestamp() + 86_400);
 
-    // claim_payout should succeed with no transfers.
     client.claim_payout(&owner);
 
-    // Bridge beneficiary received nothing from claim_payout.
+    // The bridge beneficiary receives nothing on Stellar; the full principal is
+    // burned rather than transferred, leaving the contract empty.
     assert_eq!(token_client.balance(&bridge_bene), 0);
-    // Principal stays locked for the bridge settlement path.
-    // Plan state is preserved because no Stellar beneficiaries were served.
-    assert_eq!(token_client.balance(&contract_id), principal);
-    assert!(
-        client.get_plan(&owner).is_some(),
-        "plan should remain for bridge settlement"
-    );
+    assert_eq!(token_client.balance(&contract_id), 0);
+    assert_eq!(token_client.total_supply(), supply_before - principal);
+
+    // A BridgePayoutEvent is emitted carrying the plan's source-chain provenance.
+    let expected = BridgePayoutEvent {
+        owner: owner.clone(),
+        token: token_id.clone(),
+        beneficiary: bridge_bene.clone(),
+        destination_chain: String::from_str(&env, "Ethereum"),
+        destination_address: String::from_str(&env, "0xBridgeDest"),
+        gross_amount: principal,
+        fee_amount: 0,
+        net_amount: principal,
+        source_chain: String::from_str(&env, "Polygon"),
+        source_tx_hash: String::from_str(&env, "0xsrc_hash"),
+    };
+    let bridge_event = env
+        .events()
+        .all()
+        .iter()
+        .find(|(emitter, topics, _)| {
+            *emitter == contract_id
+                && *topics == (symbol_short!("BridgePay"), contract_id.clone()).into_val(&env)
+        })
+        .expect("BridgePayoutEvent should be emitted for the cross-chain beneficiary");
+    let payload = BridgePayoutEvent::from_val(&env, &bridge_event.2);
+    assert_eq!(payload, expected);
+
+    // The plan is fully consumed and removed from storage.
+    assert_eq!(client.get_plan(&owner), None);
 }
