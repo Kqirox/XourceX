@@ -32,6 +32,7 @@ pub enum Error {
     DivisionByZero = 15,
     InvalidYieldRate = 16,
     InvalidGracePeriod = 17,
+    ContractPaused = 18,
 }
 
 #[contracttype]
@@ -102,6 +103,7 @@ pub struct YieldState {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InstanceDataKey {
     Admin,
+    Paused,
 }
 
 #[contract]
@@ -223,6 +225,10 @@ impl InheritanceContract {
     ) -> Result<(), Error> {
         owner.require_auth();
 
+        if Self::is_paused(env.clone()) {
+            return Err(Error::ContractPaused);
+        }
+
         if beneficiaries.len() > MAX_BENEFICIARIES {
             return Err(Error::TooManyBeneficiaries);
         }
@@ -337,6 +343,10 @@ impl InheritanceContract {
             return Err(Error::AlreadyInitialized);
         }
         env.storage().instance().set(&admin_key, &admin);
+
+        let pause_key = InstanceDataKey::Paused;
+        env.storage().instance().set(&pause_key, &false);
+
         Ok(())
     }
 
@@ -353,6 +363,27 @@ impl InheritanceContract {
             return Err(Error::Unauthorized);
         }
         Ok(())
+    }
+
+    pub fn pause_contract(env: Env, admin: Address) -> Result<(), Error> {
+        admin.require_auth();
+        Self::require_admin(&env, &admin)?;
+        let key = InstanceDataKey::Paused;
+        env.storage().instance().set(&key, &true);
+        Ok(())
+    }
+
+    pub fn unpause_contract(env: Env, admin: Address) -> Result<(), Error> {
+        admin.require_auth();
+        Self::require_admin(&env, &admin)?;
+        let key = InstanceDataKey::Paused;
+        env.storage().instance().set(&key, &false);
+        Ok(())
+    }
+
+    pub fn is_paused(env: Env) -> bool {
+        let key = InstanceDataKey::Paused;
+        env.storage().instance().get(&key).unwrap_or(false)
     }
 
     pub fn register_supported_wrapped_token(
