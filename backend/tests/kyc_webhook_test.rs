@@ -33,6 +33,9 @@ fn test_state(secret: Option<&str>) -> std::sync::Arc<xourcex_backend::AppState>
         apy_config: xourcex_backend::yield_calculator::ApyConfig::default(),
         plan_cache: xourcex_backend::PlanCache::disabled(),
         kyc_tx,
+        stellar_submit: xourcex_backend::stellar_submit::StellarSubmitClient::new(
+            "https://horizon-testnet.stellar.org".to_string(),
+        ),
     })
 }
 #[tokio::test]

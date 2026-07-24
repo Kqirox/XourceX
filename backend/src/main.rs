@@ -61,6 +61,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         apy_config: xourcex_backend::yield_calculator::ApyConfig::from_env(),
         plan_cache: plan_cache.clone(),
         kyc_tx: kyc_tx.clone(),
+        stellar_submit: xourcex_backend::stellar_submit::StellarSubmitClient::new(
+            config.stellar_horizon_url.clone(),
+        ),
     });
 
     // Start inactivity watchdog
