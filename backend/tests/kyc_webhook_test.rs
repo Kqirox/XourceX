@@ -32,6 +32,7 @@ fn test_state(secret: Option<&str>) -> std::sync::Arc<xourcex_backend::AppState>
         kyc_webhook_secret: secret.map(str::to_string),
         apy_config: xourcex_backend::yield_calculator::ApyConfig::default(),
         plan_cache: xourcex_backend::PlanCache::disabled(),
+        apy_cache: dashmap::DashMap::new(),
         kyc_tx,
         stellar_submit: xourcex_backend::stellar_submit::StellarSubmitClient::new(
             "https://horizon-testnet.stellar.org".to_string(),
