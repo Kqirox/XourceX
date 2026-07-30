@@ -27,7 +27,7 @@ fn test_state(secret: Option<&str>) -> std::sync::Arc<xourcex_backend::AppState>
             .unwrap();
 
     std::sync::Arc::new(xourcex_backend::AppState {
-        anchor: std::sync::Arc::new(AnchorRegistry::new()),
+        anchor: std::sync::Arc::new(AnchorRegistry::new("http://localhost:8081".to_string())),
         db_pool: pool,
         kyc_webhook_secret: secret.map(str::to_string),
         apy_config: xourcex_backend::yield_calculator::ApyConfig::default(),
