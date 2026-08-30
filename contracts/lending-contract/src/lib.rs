@@ -4331,6 +4331,7 @@ impl LendingContract {
         env.storage()
             .persistent()
             .set(&DataKey::PlanYield(plan_id), &position);
+        let _ = Self::extend_plan_yield_ttl_internal(&env, plan_id);
 
         env.events().publish(
             (symbol_short!("PLANYLD"), symbol_short!("REGISTER")),
@@ -4421,6 +4422,7 @@ impl LendingContract {
         env.storage()
             .persistent()
             .set(&DataKey::PlanYield(plan_id), &position);
+        let _ = Self::extend_plan_yield_ttl_internal(&env, plan_id);
 
         env.events().publish(
             (symbol_short!("PLANYLD"), symbol_short!("CLAIM")),
@@ -4498,6 +4500,7 @@ impl LendingContract {
         env.storage()
             .persistent()
             .set(&DataKey::PlanYield(plan_id), &position);
+        let _ = Self::extend_plan_yield_ttl_internal(&env, plan_id);
 
         env.events().publish(
             (symbol_short!("PLANYLD"), symbol_short!("UNREG")),
@@ -4541,6 +4544,7 @@ impl LendingContract {
         env.storage()
             .persistent()
             .set(&DataKey::PlanYield(plan_id), &position);
+        let _ = Self::extend_plan_yield_ttl_internal(&env, plan_id);
 
         env.events().publish(
             (symbol_short!("PLANYLD"), symbol_short!("BOOST")),
@@ -5087,6 +5091,27 @@ impl LendingContract {
 
         // Replace the contract WASM atomically — all storage is preserved.
         env.deployer().update_current_contract_wasm(new_wasm_hash);
+
+        Ok(())
+    }
+
+    /// Extend the TTL of the plan yield position.
+    /// This is the worker ping endpoint.
+    pub fn extend_ttl(env: Env, plan_id: u64) -> Result<(), LendingError> {
+        Self::extend_plan_yield_ttl_internal(&env, plan_id)
+    }
+
+    fn extend_plan_yield_ttl_internal(env: &Env, plan_id: u64) -> Result<(), LendingError> {
+        let key = DataKey::PlanYield(plan_id);
+        if !env.storage().persistent().has(&key) {
+            return Err(LendingError::PlanYieldNotRegistered);
+        }
+
+        let threshold = 518_400;
+        let extend_to = 535_680;
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, threshold, extend_to);
 
         Ok(())
     }
