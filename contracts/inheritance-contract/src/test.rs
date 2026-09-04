@@ -733,6 +733,59 @@ fn test_claim_success() {
 }
 
 #[test]
+fn test_partial_claim_success() {
+    let env = Env::default();
+    let (client, token, admin, owner) = setup_with_token_and_admin(&env);
+    let beneficiary = create_test_address(&env, 300);
+
+    let beneficiaries = vec![
+        &env,
+        (
+            String::from_str(&env, "Alice"),
+            String::from_str(&env, "alice@example.com"),
+            123456u32,
+            create_test_bytes(&env, "1111"),
+            10000u32,
+            1u32,
+        ),
+    ];
+
+    let plan_id = client.create_inheritance_plan(&plan_params(
+        &env,
+        &owner,
+        &token,
+        "Will",
+        "Inheritance Plan",
+        1000u64,
+        DistributionMethod::LumpSum,
+        &beneficiaries,
+    ));
+
+    // Approve KYC for beneficiary
+    client.submit_kyc(&beneficiary);
+    client.approve_kyc(&admin, &beneficiary);
+
+    // Partial claim 400
+    let partial_amount: i128 = 400i128;
+    let res = client.try_claim_partial_payout(
+        &plan_id,
+        &beneficiary,
+        &String::from_str(&env, "alice@example.com"),
+        &123456u32,
+        &partial_amount,
+    );
+    assert!(res.is_ok());
+
+    // Plan total_amount should have decreased by 400
+    let plan = client.get_plan_details(&plan_id).unwrap();
+    assert_eq!(plan.total_amount, 980u64 - 400u64);
+
+    // Beneficiary should not be marked as fully claimed yet
+    let b = plan.beneficiaries.get(0).unwrap();
+    assert!(!b.is_claimed);
+}
+
+#[test]
 #[should_panic]
 fn test_double_claim_fails() {
     let env = Env::default();

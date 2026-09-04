@@ -656,6 +656,15 @@ pub struct EmergencyContactRemovedEvent {
 }
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PartialClaimEvent {
+    pub plan_id: u64,
+    pub beneficiary_index: u32,
+    pub amount: u64,
+    pub remaining_balance: u64,
+    pub claimed_at: u64,
+}
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WillVersionInfo {
     pub version: u32,
     pub will_hash: BytesN<32>,
@@ -2384,6 +2393,18 @@ impl InheritanceContract {
         // Store the plan
         Self::store_plan(&env, plan_id, &plan);
 
+        // Initialize per-beneficiary balances as fixed shares of the net amount
+        for i in 0..plan.beneficiaries.len() {
+            let b = plan.beneficiaries.get(i).unwrap();
+            let share = (net_amount as u128)
+                .checked_mul(b.allocation_bp as u128)
+                .and_then(|v| v.checked_div(10000))
+                .unwrap_or(0) as u64;
+            env.storage()
+                .persistent()
+                .set(&DataKey::BeneficiaryBalance(plan_id, i), &share);
+        }
+
         // Add to user's plan list
         Self::add_plan_to_user(&env, owner.clone(), plan_id);
 
@@ -3002,15 +3023,32 @@ impl InheritanceContract {
 
         Self::release_from_plan_vault(&env, plan_id, &plan.token, &claimer, payout)?;
 
-        // Update plan balances and mark beneficiary as claimed when fully finalized
+        // Update per-beneficiary balance and plan totals; mark claimed when balance reaches zero
         let mut updated_plan = plan.clone();
 
+        let settle_key = DataKey::VestingExitSettlement(plan_id, index);
         let exit_remaining_after = exit_settlement.saturating_sub(payout);
         let exit_finalized = exit_settlement == 0 || exit_remaining_after == 0;
 
-        // Update the specific beneficiary in the vector
+        // Decrease stored beneficiary balance first (track the remaining share)
+        let bal_key = DataKey::BeneficiaryBalance(plan_id, index);
+        let mut bal: u64 = env.storage().persistent().get(&bal_key).unwrap_or(0u64);
+
+        if payout > bal {
+            // defensive: should not happen because payout calculated from entitlement
+            return Err(InheritanceError::InsufficientLiquidity);
+        }
+
+        bal = bal.saturating_sub(payout);
+        if bal == 0 {
+            env.storage().persistent().remove(&bal_key);
+        } else {
+            env.storage().persistent().set(&bal_key, &bal);
+        }
+
+        // If beneficiary's remaining balance is zero and exit finalized, mark claimed
         let mut b = updated_plan.beneficiaries.get(index).unwrap();
-        if exit_finalized {
+        if bal == 0 && exit_finalized {
             b.is_claimed = true;
         }
         updated_plan.beneficiaries.set(index, b);
@@ -3028,6 +3066,18 @@ impl InheritanceContract {
                     .set(&settle_key, &exit_remaining_after);
             }
         }
+
+        // Emit partial claim event when payout is less than original entitlement
+        env.events().publish(
+            (symbol_short!("CLAIM"), symbol_short!("PARTIAL")),
+            PartialClaimEvent {
+                plan_id,
+                beneficiary_index: index,
+                amount: payout,
+                remaining_balance: bal,
+                claimed_at: env.ledger().timestamp(),
+            },
+        );
 
         if exit_finalized {
             let claim = ClaimRecord {
@@ -3063,6 +3113,182 @@ impl InheritanceContract {
             "Inheritance claimed for plan {} by {}",
             plan_id,
             email
+        );
+
+        Self::exit_guard(&env);
+        Ok(())
+    }
+
+    /// Allow a beneficiary to claim a partial payout of their allocated share.
+    ///
+    /// Note: The beneficiary must authenticate with their address and provide
+    /// the same `email` and `claim_code` used when added. The function will
+    /// deduct `amount` from the beneficiary's stored balance and emit a
+    /// `PartialClaimEvent`.
+    pub fn claim_partial_payout(
+        env: Env,
+        plan_id: u64,
+        claimer: Address,
+        email: String,
+        claim_code: u32,
+        amount: i128,
+    ) -> Result<(), InheritanceError> {
+        // Authorization and basic checks
+        claimer.require_auth();
+        if amount <= 0 {
+            return Err(InheritanceError::InvalidTotalAmount);
+        }
+        Self::check_not_paused(&env);
+        Self::enter_guard(&env);
+
+        // KYC check
+        Self::check_kyc_approved(&env, &claimer)?;
+
+        // Load plan
+        let plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
+
+        if !plan.is_active {
+            return Err(InheritanceError::PlanNotActive);
+        }
+
+        // Freeze/legal hold
+        if env
+            .storage()
+            .persistent()
+            .has(&DataKey::FreezePlan(plan_id))
+        {
+            return Err(InheritanceError::PlanNotActive);
+        }
+        if env.storage().persistent().has(&DataKey::LegalHold(plan_id)) {
+            return Err(InheritanceError::PlanNotActive);
+        }
+
+        // Track claim attempts
+        Self::check_and_record_claim_attempt(&env, plan_id, &claimer)?;
+
+        // Hash email and find beneficiary index as in full claim
+        let hashed_email = Self::hash_string(&env, email.clone());
+
+        let mut beneficiary_index: Option<u32> = None;
+        let count = plan.beneficiaries.len().min(MAX_BENEFICIARIES);
+        for i in 0..count {
+            let b = plan.beneficiaries.get(i).unwrap();
+            if b.hashed_email != hashed_email {
+                continue;
+            }
+
+            let salt: BytesN<32> = env
+                .storage()
+                .persistent()
+                .get(&DataKey::ClaimSalt(plan_id, i))
+                .unwrap_or(BytesN::<32>::from_array(&env, &[0u8; 32]));
+            let hashed_claim_code = Self::hash_claim_code_with_salt(&env, claim_code, &salt)?;
+            if b.hashed_claim_code == hashed_claim_code {
+                beneficiary_index = Some(i);
+                break;
+            }
+        }
+
+        let index = beneficiary_index.ok_or(InheritanceError::BeneficiaryNotFound)?;
+
+        // Check frozen
+        if env
+            .storage()
+            .persistent()
+            .get::<DataKey, bool>(&DataKey::FrozenBeneficiary(plan_id, index))
+            .unwrap_or(false)
+        {
+            return Err(InheritanceError::Unauthorized);
+        }
+
+        // Ensure beneficiary has a stored balance
+        let bal_key = DataKey::BeneficiaryBalance(plan_id, index);
+        let mut bal: u64 = env.storage().persistent().get(&bal_key).unwrap_or(0u64);
+        if bal == 0 {
+            return Err(InheritanceError::NothingToClaim);
+        }
+
+        // Convert requested amount to u64 safely
+        let requested = if amount < 0 {
+            return Err(InheritanceError::InvalidTotalAmount);
+        } else {
+            amount as u64
+        };
+
+        if requested > bal {
+            return Err(InheritanceError::InsufficientLiquidity);
+        }
+
+        // Waterfall ordering: reuse existing check to ensure priority rules
+        if plan.waterfall_enabled {
+            let this = plan.beneficiaries.get(index).unwrap();
+            for i in 0..count {
+                let b = plan.beneficiaries.get(i).unwrap();
+                if b.priority != 0 && b.priority < this.priority && !b.is_claimed {
+                    return Err(InheritanceError::ClaimNotAllowedYet);
+                }
+            }
+        }
+
+        // Emergency guard
+        if Self::is_emergency_active(&env, plan_id) {
+            let limit = (plan.total_amount as u128)
+                .checked_mul(EMERGENCY_TRANSFER_LIMIT_BP as u128)
+                .and_then(|v| v.checked_div(10000))
+                .unwrap_or(0) as u64;
+
+            if requested > limit {
+                return Err(InheritanceError::EmergencyCooldownActive);
+            }
+        }
+
+        // Deduct balance
+        bal = bal.saturating_sub(requested);
+        if bal == 0 {
+            env.storage().persistent().remove(&bal_key);
+        } else {
+            env.storage().persistent().set(&bal_key, &bal);
+        }
+
+        // Update plan total
+        let mut updated_plan = plan.clone();
+        updated_plan.total_amount = updated_plan.total_amount.saturating_sub(requested);
+
+        // Mark beneficiary as claimed only when their balance is zero
+        let mut b = updated_plan.beneficiaries.get(index).unwrap();
+        if bal == 0 {
+            b.is_claimed = true;
+            // record claim
+            let claim_key = {
+                let mut data = Bytes::new(&env);
+                data.extend_from_slice(&plan_id.to_be_bytes());
+                data.extend_from_slice(&hashed_email.to_array());
+                DataKey::Claim(env.crypto().sha256(&data).into())
+            };
+            let claim = ClaimRecord {
+                plan_id,
+                beneficiary_index: index,
+                claimed_at: env.ledger().timestamp(),
+            };
+            env.storage().persistent().set(&claim_key, &claim);
+            Self::add_plan_to_claimed(&env, updated_plan.owner.clone(), plan_id);
+        }
+        updated_plan.beneficiaries.set(index, b);
+        Self::store_plan(&env, plan_id, &updated_plan);
+
+        // Grant Beneficiary role
+        access_control::assign_role(&env, &claimer, Role::Beneficiary);
+
+        // Emit partial claim event
+        env.events().publish(
+            (symbol_short!("CLAIM"), symbol_short!("PARTIAL")),
+            PartialClaimEvent {
+                plan_id,
+                beneficiary_index: index,
+                amount: requested,
+                remaining_balance: bal,
+                claimed_at: env.ledger().timestamp(),
+            },
         );
 
         Self::exit_guard(&env);
