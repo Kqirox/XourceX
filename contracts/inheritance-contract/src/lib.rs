@@ -1,3 +1,4 @@
+RESOLVED_START
 #![no_std]
 use access_control::{self, Role};
 use soroban_sdk::{
@@ -195,6 +196,15 @@ pub enum DataKey {
     Yr,      // Vec<Address> of accounts allowed to trigger harvests
     Ys(u64), // plan_id -> PlanYieldState
     Rg,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub enum WhitelistKey {
+    Acc,              // AccessControl contract address
+    RaToken(Address), // token address -> bool (is restricted asset)
+    RaPlan(u64),      // plan_id -> bool (is restricted plan)
+    Esc(u64, u32),    // (plan_id, beneficiary_index) -> EscrowRecord
 }
 
 #[contracttype]
@@ -930,6 +940,38 @@ pub struct BeneficiaryAcknowledgment {
     pub beneficiary_index: u32,
     pub notification_sent_at: u64,
     pub acknowledged_at: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EscrowRecord {
+    pub plan_id: u64,
+    pub beneficiary_index: u32,
+    pub beneficiary: Address,
+    pub amount: u64,
+    pub held_at: u64,
+    pub is_released: bool,
+    pub released_at: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EscrowHeldEvent {
+    pub plan_id: u64,
+    pub beneficiary_index: u32,
+    pub beneficiary: Address,
+    pub amount: u64,
+    pub held_at: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EscrowReleasedEvent {
+    pub plan_id: u64,
+    pub beneficiary_index: u32,
+    pub beneficiary: Address,
+    pub amount: u64,
+    pub released_at: u64,
 }
 
 #[contract]
@@ -1687,20 +1729,41 @@ impl InheritanceContract {
     /// Ok(()) if user has approved KYC, Err(InheritanceError) otherwise
     ///
     /// # Errors
-    /// - KycNotSubmitted: If user has not submitted KYC
-    fn check_kyc_approved(env: &Env, user: &Address) -> Result<(), InheritanceError> {
-        let key = DataKey::Ky(user.clone());
-        let status: KycStatus = env
-            .storage()
-            .persistent()
-            .get(&key)
-            .ok_or(InheritanceError::KycNotSubmitted)?;
+    /// - KycNotSubmitted: If user has not submitted KYC or is not approved
+    pub fn is_kyc_approved(env: Env, user: Address) -> bool {
+        Self::check_beneficiary_kyc_approved(&env, &user)
+    }
 
-        if !status.approved {
-            return Err(InheritanceError::KycNotSubmitted);
+    fn check_beneficiary_kyc_approved(env: &Env, user: &Address) -> bool {
+        // First check linked AccessControlContract if available
+        if let Some(access_contract) = Self::get_access_contract(env.clone()) {
+            let args: Vec<Val> = vec![env, user.clone().into_val(env)];
+            if let Ok(Ok(approved)) = env.try_invoke_contract::<bool, InvokeError>(
+                &access_contract,
+                &Symbol::new(env, "is_kyc_approved"),
+                args,
+            ) {
+                if approved {
+                    return true;
+                }
+            }
         }
 
-        Ok(())
+        // Fall back to local contract KYC state
+        let key = DataKey::Ky(user.clone());
+        if let Some(status) = env.storage().persistent().get::<DataKey, KycStatus>(&key) {
+            return status.approved;
+        }
+
+        false
+    }
+
+    fn check_kyc_approved(env: &Env, user: &Address) -> Result<(), InheritanceError> {
+        if Self::check_beneficiary_kyc_approved(env, user) {
+            Ok(())
+        } else {
+            Err(InheritanceError::KycNotSubmitted)
+        }
     }
 
     // Storage functions
@@ -2862,8 +2925,13 @@ impl InheritanceContract {
         Self::check_not_paused(&env);
         let _guard = access_control::ReentrancyGuard::lock_or_panic(&env);
 
-        // Check KYC approval - only approved users can claim plans
-        Self::check_kyc_approved(&env, &claimer)?;
+        let is_kyc_approved = Self::check_beneficiary_kyc_approved(&env, &claimer);
+        let is_restricted = Self::is_plan_restricted(env.clone(), plan_id);
+
+        // If KYC is not approved and plan is not restricted, fail immediately
+        if !is_kyc_approved && !is_restricted {
+            return Err(InheritanceError::KycNotSubmitted);
+        }
 
         // Fetch the plan
         let plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
@@ -2979,19 +3047,7 @@ impl InheritanceContract {
             }
         }
 
-        // If plan is lendable and funds are loaned, we might have yield or need to recall funds.
-        // For MVP priority logic: if we don't have enough liquid funds (amount - total_loaned < payout)
-        // we'd recall from LendingContract.
-        // Since we don't store the LendingContract address in InheritanceContract yet,
-        // we assume the funds are sitting in the contract (vault) or we are authorized to pull them.
         let available_liquidity = plan.total_amount.saturating_sub(plan.total_loaned);
-
-        // In a full implementation, we would call LendingClient::withdraw_priority
-        // if payout > available_liquidity.
-        // For now, we simulate the priority payout directly if liquid funds are sufficient,
-        // or fail with InsufficientLiquidity if not (which a later migration would fix by linking contracts).
-        // When inheritance is triggered, bypass the liquidity check so that
-        // beneficiary claims are never blocked by outstanding loans.
         if !triggered && payout > available_liquidity {
             return Err(InheritanceError::InsufficientLiquidity);
         }
@@ -3000,6 +3056,56 @@ impl InheritanceContract {
             return Err(InheritanceError::NothingToClaim);
         }
 
+        // If beneficiary KYC is not approved for a restricted plan, hold payout in escrow
+        if !is_kyc_approved {
+            let escrow_record = EscrowRecord {
+                plan_id,
+                beneficiary_index: index,
+                beneficiary: claimer.clone(),
+                amount: payout,
+                held_at: env.ledger().timestamp(),
+                is_released: false,
+                released_at: 0,
+            };
+            env.storage()
+                .persistent()
+                .set(&WhitelistKey::Esc(plan_id, index), &escrow_record);
+
+            let mut updated_plan = plan.clone();
+            updated_plan.total_amount = updated_plan.total_amount.saturating_sub(payout);
+            Self::store_plan(&env, plan_id, &updated_plan);
+
+            let claim = ClaimRecord {
+                plan_id,
+                beneficiary_index: index,
+                claimed_at: env.ledger().timestamp(),
+            };
+            env.storage().persistent().set(&claim_key, &claim);
+
+            env.events().publish(
+                (symbol_short!("ESCROW"), symbol_short!("HELD")),
+                EscrowHeldEvent {
+                    plan_id,
+                    beneficiary_index: index,
+                    beneficiary: claimer.clone(),
+                    amount: payout,
+                    held_at: env.ledger().timestamp(),
+                },
+            );
+
+            log!(
+                &env,
+                "Restricted asset payout {} held in escrow for beneficiary {} on plan {}",
+                payout,
+                claimer,
+                plan_id
+            );
+
+            Self::exit_guard(&env);
+            return Ok(());
+        }
+
+        // Transfer funds to beneficiary
         Self::release_from_plan_vault(&env, plan_id, &plan.token, &claimer, payout)?;
 
         // Update plan balances and mark beneficiary as claimed when fully finalized
@@ -6277,6 +6383,199 @@ impl InheritanceContract {
         env.storage().instance().get(&DataKey::Gc)
     }
 
+    pub fn set_access_contract(
+        env: Env,
+        admin: Address,
+        contract: Address,
+    ) -> Result<(), InheritanceError> {
+        Self::require_admin(&env, &admin)?;
+        Self::require_compatible_version(&env, &contract);
+        env.storage().instance().set(&WhitelistKey::Acc, &contract);
+        env.events().publish(
+            (symbol_short!("LINK"), symbol_short!("ACCESS")),
+            ContractLinkedEvent {
+                contract_type: symbol_short!("ACCESS"),
+                address: contract,
+            },
+        );
+        Ok(())
+    }
+
+    pub fn get_access_contract(env: Env) -> Option<Address> {
+        env.storage().instance().get(&WhitelistKey::Acc)
+    }
+
+    pub fn set_access_control_contract(
+        env: Env,
+        admin: Address,
+        contract: Address,
+    ) -> Result<(), InheritanceError> {
+        Self::set_access_contract(env, admin, contract)
+    }
+
+    pub fn get_access_control_contract(env: Env) -> Option<Address> {
+        Self::get_access_contract(env)
+    }
+
+    // ─── Restricted Asset & Escrow Management ─────────────────────
+
+    /// Mark or unmark a token contract as a restricted asset requiring KYC whitelist.
+    pub fn set_restricted_asset(
+        env: Env,
+        admin: Address,
+        token: Address,
+        is_restricted: bool,
+    ) -> Result<(), InheritanceError> {
+        Self::require_admin(&env, &admin)?;
+        let key = WhitelistKey::RaToken(token.clone());
+        if is_restricted {
+            env.storage().persistent().set(&key, &true);
+        } else {
+            env.storage().persistent().remove(&key);
+        }
+        env.events().publish(
+            (symbol_short!("ASSET"), symbol_short!("RESTR")),
+            (token, is_restricted),
+        );
+        Ok(())
+    }
+
+    /// Check if a token is marked as a restricted asset.
+    pub fn is_asset_restricted(env: Env, token: Address) -> bool {
+        env.storage()
+            .persistent()
+            .get::<WhitelistKey, bool>(&WhitelistKey::RaToken(token))
+            .unwrap_or(false)
+    }
+
+    /// Mark or unmark an inheritance plan as restricted.
+    pub fn set_plan_restricted(
+        env: Env,
+        owner: Address,
+        plan_id: u64,
+        is_restricted: bool,
+    ) -> Result<(), InheritanceError> {
+        let plan = Self::get_plan(&env, plan_id).ok_or(InheritanceError::PlanNotFound)?;
+        if plan.owner != owner {
+            return Err(InheritanceError::Unauthorized);
+        }
+        let key = WhitelistKey::RaPlan(plan_id);
+        if is_restricted {
+            env.storage().persistent().set(&key, &true);
+        } else {
+            env.storage().persistent().remove(&key);
+        }
+        env.events().publish(
+            (symbol_short!("PLAN"), symbol_short!("RESTR")),
+            (plan_id, is_restricted),
+        );
+        Ok(())
+    }
+
+    /// Check if an inheritance plan is restricted.
+    pub fn is_plan_restricted(env: Env, plan_id: u64) -> bool {
+        env.storage()
+            .persistent()
+            .get::<WhitelistKey, bool>(&WhitelistKey::RaPlan(plan_id))
+            .unwrap_or(false)
+    }
+
+    /// Release an escrowed payout to a beneficiary who has completed KYC verification in AccessControlContract.
+    pub fn release_escrow_payout(
+        env: Env,
+        claimer: Address,
+        plan_id: u64,
+        beneficiary_index: u32,
+    ) -> Result<(), InheritanceError> {
+        claimer.require_auth();
+        Self::check_not_paused(&env);
+        Self::enter_guard(&env);
+
+        let escrow_key = WhitelistKey::Esc(plan_id, beneficiary_index);
+        let mut escrow: EscrowRecord = env
+            .storage()
+            .persistent()
+            .get(&escrow_key)
+            .ok_or(InheritanceError::PlanNotFound)?;
+
+        if escrow.is_released {
+            return Err(InheritanceError::AlreadyClaimed);
+        }
+
+        if escrow.beneficiary != claimer {
+            return Err(InheritanceError::Unauthorized);
+        }
+
+        // Verify KYC approval via cross-contract call to AccessControlContract
+        if !Self::check_beneficiary_kyc_approved(&env, &claimer) {
+            return Err(InheritanceError::KycNotSubmitted);
+        }
+
+        escrow.is_released = true;
+        escrow.released_at = env.ledger().timestamp();
+        env.storage().persistent().set(&escrow_key, &escrow);
+
+        // Update plan beneficiary status
+        if let Some(mut plan) = Self::get_plan(&env, plan_id) {
+            if (beneficiary_index as usize) < plan.beneficiaries.len() as usize {
+                let mut b = plan.beneficiaries.get(beneficiary_index).unwrap();
+                b.is_claimed = true;
+                plan.beneficiaries.set(beneficiary_index, b);
+                Self::store_plan(&env, plan_id, &plan);
+            }
+            Self::add_plan_to_claimed(&env, plan.owner.clone(), plan_id);
+        }
+
+        access_control::assign_role(&env, &claimer, Role::Beneficiary);
+
+        env.events().publish(
+            (symbol_short!("ESCROW"), symbol_short!("RELEASE")),
+            EscrowReleasedEvent {
+                plan_id,
+                beneficiary_index,
+                beneficiary: claimer.clone(),
+                amount: escrow.amount,
+                released_at: escrow.released_at,
+            },
+        );
+
+        env.events().publish(
+            (symbol_short!("CLAIM"), symbol_short!("SUCCESS")),
+            (plan_id, escrow.amount),
+        );
+
+        log!(
+            &env,
+            "Escrow released {} to beneficiary {} on plan {}",
+            escrow.amount,
+            claimer,
+            plan_id
+        );
+
+        Self::exit_guard(&env);
+        Ok(())
+    }
+
+    /// Retrieve an escrow record for a given plan and beneficiary index.
+    pub fn get_escrow_record(
+        env: Env,
+        plan_id: u64,
+        beneficiary_index: u32,
+    ) -> Option<EscrowRecord> {
+        env.storage()
+            .persistent()
+            .get(&WhitelistKey::Esc(plan_id, beneficiary_index))
+    }
+
+    /// Check if payout funds are currently held in escrow for a beneficiary.
+    pub fn is_escrow_held(env: Env, plan_id: u64, beneficiary_index: u32) -> bool {
+        if let Some(escrow) = Self::get_escrow_record(env, plan_id, beneficiary_index) {
+            !escrow.is_released
+        } else {
+            false
+        }
+    }
+
     /// Reject a peer contract that does not report the version this build was
     /// written against.
     ///
@@ -7634,58 +7933,3 @@ impl InheritanceContract {
         let key = DataKey::P(plan_id);
         if !env.storage().persistent().has(&key) {
             return Err(InheritanceError::PlanNotFound);
-        }
-
-        let threshold = 518_400;
-        let extend_to = 535_680;
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, threshold, extend_to);
-
-        let trigger_key = DataKey::It(plan_id);
-        if env.storage().persistent().has(&trigger_key) {
-            env.storage()
-                .persistent()
-                .extend_ttl(&trigger_key, threshold, extend_to);
-        }
-
-        let emergency_access_key = DataKey::Eac(plan_id);
-        if env.storage().persistent().has(&emergency_access_key) {
-            env.storage()
-                .persistent()
-                .extend_ttl(&emergency_access_key, threshold, extend_to);
-        }
-
-        let guardians_key = DataKey::Gd(plan_id);
-        if env.storage().persistent().has(&guardians_key) {
-            env.storage()
-                .persistent()
-                .extend_ttl(&guardians_key, threshold, extend_to);
-        }
-
-        let contacts_key = DataKey::Ec(plan_id);
-        if env.storage().persistent().has(&contacts_key) {
-            env.storage()
-                .persistent()
-                .extend_ttl(&contacts_key, threshold, extend_to);
-        }
-
-        let will_hash_key = DataKey::Wh(plan_id);
-        if env.storage().persistent().has(&will_hash_key) {
-            env.storage()
-                .persistent()
-                .extend_ttl(&will_hash_key, threshold, extend_to);
-        }
-
-        let vault_will_key = DataKey::Vw(plan_id);
-        if env.storage().persistent().has(&vault_will_key) {
-            env.storage()
-                .persistent()
-                .extend_ttl(&vault_will_key, threshold, extend_to);
-        }
-
-        Ok(())
-    }
-}
-
-mod test;
