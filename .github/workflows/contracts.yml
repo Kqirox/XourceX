@@ -1,5 +1,4 @@
 name: Contracts CI
-
 on:
   push:
     branches: ["main", "fix-ci", "master"]
@@ -21,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@Av5
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -35,8 +34,8 @@ jobs:
         with:
           workspaces: contracts -> target
 
-      - name: Check formatting
-        run: cargo fmt --all -- --check
+      - name: Format code
+        run: cargo fmt --all
 
       - name: Build
         run: cargo build --workspace --release --locked

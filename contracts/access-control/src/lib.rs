@@ -17,6 +17,7 @@ pub enum Role {
 #[derive(Clone)]
 pub enum AccessControlKey {
     Roles(Address),
+    UserNonces(Address),
     Blacklisted(Address),
 }
 
@@ -82,6 +83,44 @@ pub fn require_role<E: Into<soroban_sdk::Error> + Copy>(
     contract_error: E,
 ) -> Result<(), E> {
     if has_role(env, address, role) {
+        Ok(())
+    } else {
+        Err(contract_error)
+    }
+}
+
+// ─── Nonce Revocation ────────────────────────────
+
+/// Set the minimum accepted nonce for `address`.  Signed authorization
+/// payloads with `nonce` below this value are rejected.
+///
+/// The minimum is monotonic: calling with a smaller value than the current
+/// minimum is a no-op.
+pub fn revoke_user_nonces(env: &Env, address: &Address, min_nonce: u64) {
+    let key = AccessControlKey::UserNonces(address.clone());
+    let current: u64 = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(0);
+    if min_nonce > current {
+        env.storage().persistent().set(&key, &min_nonce);
+    }
+}
+
+/// Fail with `contract_error` if `nonce` has been revoked for `address`.
+pub fn require_user_nonce_valid<E: Into<soroban_sdk::Error> + Copy>(
+    env: &Env,
+    address: &Address,
+    nonce: u64,
+    contract_error: E,
+) -> Result<(), E> {
+    let min_nonce: u64 = env
+        .storage()
+        .persistent()
+        .get(&AccessControlKey::UserNonces(address.clone()))
+        .unwrap_or(0);
+    if nonce >= min_nonce {
         Ok(())
     } else {
         Err(contract_error)
