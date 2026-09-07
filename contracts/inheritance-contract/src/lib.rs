@@ -136,8 +136,10 @@ pub enum InheritanceError {
     WillAlreadyLinked = 48,
     WillAlreadyFinalized = 49,
     WillVersionNotFound = 50,
-    ReentrantCall = 51,
-    Blk = 52,
+    AddressBlacklisted = 51,
+    MathOverflow = 52,
+    ReentrantCall = 53,
+    Blk = 54,
 }
 
 #[contracttype]
