@@ -151,7 +151,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
-    info!("Starting rebranded XOURCEX backend skeleton on {}", addr);
+    info!("Starting XourceX backend skeleton on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
 
