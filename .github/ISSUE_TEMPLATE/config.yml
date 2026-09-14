@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: XourceX Security Policy
+    url: https://github.com/Kqirox/XourceX/blob/master/SECURITY.md
+    about: Report security vulnerabilities privately.
