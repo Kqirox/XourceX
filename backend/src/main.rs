@@ -1,13 +1,13 @@
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::signal;
+use tracing::{error, info, warn};
 #[cfg(feature = "metrics")]
 use xourcex_backend::metrics;
 use xourcex_backend::{
     create_router, telemetry, AppState, Config, DbManager, InactivityWatchdogConfig,
     InactivityWatchdogService,
 };
-use std::net::SocketAddr;
-use std::sync::Arc;
-use tokio::signal;
-use tracing::{error, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

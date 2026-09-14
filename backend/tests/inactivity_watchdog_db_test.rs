@@ -7,9 +7,9 @@
 //! no PostgreSQL. It is deliberately a different variable from `DATABASE_URL`,
 //! which other tests expect to be unreachable.
 
-use xourcex_backend::{DbManager, InactivityWatchdogConfig, InactivityWatchdogService, PlanCache};
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
+use xourcex_backend::{DbManager, InactivityWatchdogConfig, InactivityWatchdogService, PlanCache};
 
 /// A sweep claims every expired plan in the database, not just the one the
 /// calling test inserted, so these tests must not run against it at the same
@@ -221,9 +221,7 @@ async fn sweep_leaves_a_fresh_in_flight_plan_alone() {
 /// tests above never reach the network: they fail before a transaction is
 /// built.
 fn chain_client() -> xourcex_backend::stellar_submit::StellarSubmitClient {
-    use xourcex_backend::stellar_submit::{
-        SorobanConfig, StellarSubmitClient, TESTNET_PASSPHRASE,
-    };
+    use xourcex_backend::stellar_submit::{SorobanConfig, StellarSubmitClient, TESTNET_PASSPHRASE};
 
     StellarSubmitClient::new("http://127.0.0.1:1".to_string())
         .with_soroban(SorobanConfig {

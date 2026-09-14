@@ -4,14 +4,14 @@ use axum::{
     routing::get,
     Router,
 };
-use xourcex_backend::middleware::{
-    geo_restriction_middleware, rate_limit_middleware, CountryResolver, GeoGuardConfig,
-    RateLimitConfig, RateLimitStore,
-};
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tower::ServiceExt;
+use xourcex_backend::middleware::{
+    geo_restriction_middleware, rate_limit_middleware, CountryResolver, GeoGuardConfig,
+    RateLimitConfig, RateLimitStore,
+};
 
 fn build_rate_limited_app(max_requests: u64, window_secs: u64) -> Router {
     let store = RateLimitStore::new();

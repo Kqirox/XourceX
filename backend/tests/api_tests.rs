@@ -3,11 +3,11 @@ use axum::{
     http::{self, Request, StatusCode},
 };
 use ed25519_dalek::{Signer, SigningKey};
-use xourcex_backend::{create_router, AppState, PlanCache, PlanResponse};
 use serde_json::json;
 use std::sync::Arc;
 use std::time::Duration;
 use tower::ServiceExt; // for oneshot
+use xourcex_backend::{create_router, AppState, PlanCache, PlanResponse};
 
 fn generate_valid_signature(body: &str, _public_key_hex: &str) -> (String, String) {
     // Use a fixed test keypair for deterministic testing
@@ -656,7 +656,7 @@ async fn test_cors_origins() {
         "https://xourcex.vercel.app/path", // Path suffix in origin
         "http://localhost.attacker.com", // Spoofing localhost
         "http://127.0.0.1.attacker.com", // Spoofing 127.0.0.1
-        "null",                       // null origin
+        "null",                      // null origin
     ];
 
     for origin in denied_origins {
