@@ -1,105 +1,233 @@
-# XourceX 
+<div align="center">
+
+# XourceX
 
 **Yield-Bearing, Fiat-Native Digital Inheritance Infrastructure on Stellar**
 
-XourceX is a programmable, cross-border digital inheritance protocol built on the **Stellar network** using **Soroban smart contracts**. It allows individuals to secure digital assets and automatically distribute them to multiple heirs when predefined inactivity conditions are met, with automatic settlement directly to **local fiat bank accounts or mobile money** via Stellar anchors.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
+[![Backend](https://img.shields.io/badge/backend-Rust-4e74d8?logo=rust)](backend)
+[![Frontend](https://img.shields.io/badge/frontend-Next.js-000000?logo=next.js)](frontend)
+[![Smart Contracts](https://img.shields.io/badge/smart--contracts-Soroban-ff6b35)](contracts)
+
+XourceX is a programmable, cross-border digital inheritance protocol built on the
+**Stellar network** with **Soroban smart contracts**. Individuals can secure their
+digital assets and automatically distribute them to multiple heirs when predefined
+inactivity conditions are met — settling directly to local fiat bank accounts or
+mobile money wallets via Stellar anchors.
+
+</div>
 
 ---
 
-## 🌍 Core Features
+## Why XourceX
+
+Traditional inheritance is slow, paper-heavy, and unavailable to most of the world's
+unbanked population. XourceX makes estate planning programmable:
+
+- **Self-custody until activation** — assets remain under the owner's control and earn yield while dormant.
+- **No crypto literacy required for heirs** — beneficiaries are paid in local fiat.
+- **Global, by default** — built on the Stellar network, settlements work across borders.
+
+---
+
+## Key Features
 
 ### 1. Yield-Bearing Inheritance Plans
-Assets locked within the inheritance vault do not sit idle. When creating a plan, owners can opt to supply their capital into yield-generating Soroban lending or liquidity vaults. Yield accumulates continuously, increasing the eventual inheritance principal distributed to heirs.
+Assets locked in an inheritance vault never sit idle. Plan owners can opt to supply
+their capital into yield-generating Soroban lending or liquidity vaults. Yield
+accumulates continuously and increases the principal ultimately distributed to heirs.
 
-### 2. Mass Beneficiaries Payouts
-XourceX facilitates distributions to multiple heirs in a single transaction. Owners set custom allocation splits (defined in basis points, e.g., 5000 bps for 50%) for any number of beneficiaries. The smart contract automatically handles the division of principal and accrued yield upon payout.
+### 2. Mass Beneficiary Payouts
+Distributions to multiple heirs happen in a single transaction. Owners define custom
+allocation splits in basis points (e.g. `5000 bps` = 50%) for any number of
+beneficiaries. The contract automatically divides principal and accrued yield on payout.
 
 ### 3. Fiat Settlement via Stellar Anchors
-To bridge the gap between Web3 assets and real-world utility, beneficiaries do not need crypto wallets or blockchain literacy. Heirs can configure their payout to be off-ramped into local fiat currencies (e.g. NGN, KES, BRL, PHP, EUR, USD) and deposited directly into their local bank accounts or mobile money wallets using Stellar Anchors.
+Heirs do not need crypto wallets or blockchain literacy. Payouts can be off-ramped
+into local fiat currencies (`NGN`, `KES`, `BRL`, `PHP`, `EUR`, `USD`, …) and deposited
+directly into bank accounts or mobile money wallets using Stellar Anchors.
+
+### 4. Proof-of-Life & Dispute Handling
+Activities ("pings") keep plans active; defined inactivity conditions trigger
+activation. Escalation and dispute flows are handled on-chain.
 
 ---
 
-## 🏗 Technical Architecture
+## Architecture
 
-- **`contracts/inheritance-contract`**: The Soroban smart contract managing vault state, pings (proof-of-life), yield accounting, and payouts distribution.
-- **`backend`**: An Axum-based Rust service simulating the Stellar Anchor off-ramp and orchestrating the database-free planning state.
-- **`frontend`**: A Next.js landing page DApp featuring interactive plan configuration and a visual claim/settlement simulator.
+```
+                  ┌──────────────────────────────────────────────┐
+                  │                   Frontend                    │
+                  │         Next.js landing DApp + simulator      │
+                  └───────────────┬──────────────────┬────────────┘
+                                  │  HTTP / WebSocket │
+                                  ▼                  ▼
+┌──────────────────────────┐  ┌──────────────────────────────┐
+│   Soroban Contracts       │  │            Backend           │
+│  inheritance-contract     │◄►│  Axum (Rust) — planning API,  │
+│  plan-vault               │  │  inactivity watchdog, KYC     │
+│  lending-contract         │  │  webhooks, PDF reports, fiat  │
+│  loan-nft · mock-token    │  │  (SEP-31) anchor client        │
+│  access-control           │  └──────────────┬───────────────┘
+└──────────────────────────┘                  │
+                               ┌──────────────▼────────────────┐
+                               │ Stellar Network + Anchors      │
+                               │ (SEP-31 off-ramp to local fiat)│
+                               └───────────────────────────────┘
+```
+
+### Repository Layout
+
+| Directory | Purpose |
+| --- | --- |
+| `contracts/` | Soroban smart contracts (workspace) |
+| `contracts/inheritance-contract` | Vault state, pings, yield accounting, payouts, disputes |
+| `contracts/plan-vault` | Plan creation and asset custody |
+| `contracts/lending-contract` | Yield-generating lending vault interactions |
+| `contracts/loan-nft` | Non-transferable loan-position NFTs |
+| `contracts/access-control` | Shared roles/authority library across contracts |
+| `backend/` | Axum (Rust) API service (planning, watchdog, KYC, fiat anchor client) |
+| `frontend/` | Next.js DApp (landing, plan configuration, claim simulator) |
+| `scripts/` | Deployment and environment setup scripts |
 
 ---
 
-## ⚡ Quick Install (Minimal)
+## Getting Started
 
-The repo has three independent layers. Install only what you need:
+### Prerequisites
+
+- [Rust](https://www.rust-lang.org/) (`1.75+`) with the `wasm32-unknown-unknown` target
+- [Node.js](https://nodejs.org/) `18+` and [pnpm](https://pnpm.io/)
+- Optional: PostgreSQL 14+, Redis 7+, Docker
 
 ```bash
-# Frontend — dev server only (no e2e tests, no PWA pipeline, no image optimiser)
-cd frontend && pnpm install    # .npmrc defaults optional=false (~50–80 MB lighter)
-pnpm run dev
+rustup target add wasm32-unknown-unknown
+```
 
-# Backend — no Redis, Prometheus, or PDF generation
-cd backend && cargo build --no-default-features
-cargo run --no-default-features
+### Quick Start (Minimal)
 
-# Contracts only
+Each layer is independently runnable:
+
+```bash
+# Frontend — dev server only
+cd frontend && pnpm install && pnpm run dev      # http://localhost:3000
+
+# Backend — minimal build (no Redis / Prometheus / PDF)
+cd backend && cargo run --no-default-features
+
+# Smart contracts — build only
 cd contracts && cargo build --target wasm32-unknown-unknown --release
 ```
 
-> **Tip:** Run `pnpm install --optional` in `frontend/` to restore optional deps:
-> `@playwright/test` (e2e), `@ducanh2912/next-pwa` (PWA), `sharp` (image optimiser), `@allbridge/bridge-core-sdk` (cross-chain bridge).
+> **Tip:** `pnpm install --optional` in `frontend/` additionally restores
+> `@playwright/test` (e2e), `@ducanh2912/next-pwa` (PWA), `sharp` (image
+> optimiser), and `@allbridge/bridge-core-sdk` (cross-chain bridge).
 
----
+### Smart Contracts
 
-## 🚀 Getting Started (Full)
-
-### 1. Smart Contracts
 ```bash
 cd contracts
 cargo build --target wasm32-unknown-unknown --release
-cargo test
+cargo test          # run the contract test suites (incl. reentrancy, yield math)
 ```
 
-### 2. Backend
+### Backend
 
 Full build (Redis cache + Prometheus metrics + PDF reports):
+
 ```bash
-cd backend
-cargo run
+cd backend && cargo run
 ```
 
-Minimal build (no optional deps — faster compile, no Redis/Prometheus/PDF required):
+Minimal build (no optional dependencies):
+
 ```bash
-cd backend
-cargo run --no-default-features
+cd backend && cargo run --no-default-features
 ```
 
 Selective features:
+
 ```bash
-cargo run -F redis-cache          # add Redis cache only
-cargo run -F redis-cache,metrics  # add Redis + Prometheus
+cargo run -F redis-cache            # add Redis cache only
+cargo run -F redis-cache,metrics    # add Redis + Prometheus
 ```
 
-Optional cache tuning:
+Configuration is via environment variables — see [`backend/.env.example`](backend/.env.example)
+and [`docs/security.md`](docs/security.md). Notable variables:
+
 ```bash
-export REDIS_URL=redis://127.0.0.1:6379
-export PLAN_CACHE_TTL_SECS=15
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/xourcex
+LOG_FORMAT=json                    # json | pretty | compact
+KYC_WEBHOOK_SECRET=<hmac-secret>   # required to accept KYC webhooks
+ANCHOR_API_URL=http://localhost:8081
 ```
 
-When Redis is enabled, `GET /api/plans` returns cache-timing headers:
-`x-plan-cache-status`, `x-plan-cache-lookup-ms`, `x-plan-db-query-ms`, `x-plan-total-latency-ms`
+### Frontend
 
-### 3. Frontend
 ```bash
 cd frontend
-pnpm install           # lightweight install (optional deps skipped by default)
-pnpm run dev           # http://localhost:3000
+pnpm install
+pnpm run dev                       # http://localhost:3000
 
-# For e2e tests:
+# e2e tests (requires optional deps)
 pnpm install --optional
 pnpm run test:e2e
 ```
 
+Unit tests: `pnpm run test` · Coverage: `pnpm run test:coverage`
+
 ---
 
-## 🔐 Contribution Guidelines
+## Testing
 
-XourceX is transitioning from development to testnet. The codebase is structured with placeholders, stubs, and interfaces. Contributors are invited to review open GitHub issues and implement the contract math, API handlers, anchor hooks, and frontend simulator widget.
+| Layer | Command | Notes |
+| --- | --- | --- |
+| Contracts | `cargo test` | Unit + integration, reentrancy guards, snapshot tests |
+| Backend | `cargo test` | API, KYC webhooks, inactivity watchdog, DB query guards |
+| Frontend unit | `pnpm test` | Vitest component suites |
+| Frontend e2e | `pnpm test:e2e` | Playwright flows |
+
+---
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Smart Contracts](docs/contracts.md)
+- [API Reference](docs/api.md)
+- [Testing Guide](docs/testing.md)
+- [Development Setup](docs/development.md)
+- [Deployment](docs/deployment.md)
+- [Security](docs/security.md)
+
+---
+
+## Contributing
+
+XourceX is transitioning from development to testnet. The codebase intentionally
+contains placeholders, stubs, and interfaces open for implementation.
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) and our
+[Code of Conduct](CODE_OF_CONDUCT.md). In short:
+
+1. Fork the repository and create a feature branch.
+2. Follow the existing code style (`rustfmt` / `clippy` for Rust, ESLint/Prettier for the frontend).
+3. Add tests for new behaviour.
+4. Open a Pull Request referencing the relevant issue.
+
+Security findings should follow the guidance in [SECURITY.md](SECURITY.md).
+
+---
+
+## Roadmap
+
+- [x] Core inheritance vault & payout logic
+- [x] Yield accrual via Soroban lending vaults
+- [x] Loan-position NFT surface for lending flows
+- [ ] Testnet deployment & stress testing
+- [ ] Mainnet anchor integrations and local-fiat settlements
+
+---
+
+## License
+
+Released under the terms described in [LICENSE](LICENSE).
