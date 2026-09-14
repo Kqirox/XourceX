@@ -1,0 +1,36 @@
+name: Feature request
+description: Propose an enhancement or new capability for XourceX
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Search existing issues before opening a feature request.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the desired behaviour or design.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds or other approaches you evaluated.
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Affected layer
+      options:
+        - Contracts
+        - Backend
+        - Frontend
+        - Docs / tooling
+        - Multiple
