@@ -1,39 +1,36 @@
-# Soroban Project
+# XourceX Smart Contracts
 
-## Loan NFT compliance
+Soroban (Stellar) smart contracts powering XourceX inheritance and lending flows.
 
-The `loan-nft` contract implements the marketplace-facing loan position NFT surface used by the lending flow:
+## Contracts
 
-- ownership queries via `owner_of`, `balance_of`, `total_supply`, `get_metadata`, and `token_uri`
-- Soroban NFT standard `get_token_uri(token_id)`, which returns the on-chain URI JSON bound to each loan position
-- transfers via `transfer` and `transfer_from`
-- approvals via `approve`, `get_approved`, `set_approval_for_all`, and `is_approved_for_all`
-- standard NFT lifecycle events: `Transfer`, `Approval`, and `ApprovalForAll`
-- transfer restrictions for active loans through the per-loan `Transferable` flag
-- reentrancy protection around mint, burn, and transfer execution paths
+| Crate | Responsibility |
+| --- | --- |
+| `access-control` | Shared roles + reentrancy guard |
+| `plan-vault` | Plan creation and asset custody |
+| `inheritance-contract` | Vault state, pings, yield accounting, payouts, disputes |
+| `lending-contract` | Yield-generating lending integration |
+| `loan-nft` | Loan-position NFTs (locked while loan active) |
+| `mock-token` | Issued asset for tests and demos |
 
-Loan position NFTs are intentionally non-transferable while the underlying loan is marked active. The lending flow should set `Transferable(false)` when a position must remain locked and re-enable transfers only when the position can be safely sold or reassigned.
+## Build
 
-## Dynamic loan metadata
-
-Each minted position persists its dynamic metadata on-chain under `DataKey::Metadata(loan_id)`. `LoanMetadata` binds the loan ID, borrower, principal, collateral amount/token, due date, LTV ratio (in basis points), inheritance plan ID, and the URI JSON that marketplace/indexer tooling can read through `get_token_uri(token_id)`.
-
-## Project Structure
-
-This repository uses the recommended structure for a Soroban project:
-```text
-.
-├── contracts
-│   └── hello_world
-│       ├── src
-│       │   ├── lib.rs
-│       │   └── test.rs
-│       └── Cargo.toml
-├── Cargo.toml
-└── README.md
+```bash
+cargo build --target wasm32-unknown-unknown --release
 ```
 
-- New Soroban contracts can be put in `contracts`, each in their own directory. There is already a `hello_world` contract in there to get you started.
-- If you initialized this project with any other example contracts via `--with-example`, those contracts will be in the `contracts` directory as well.
-- Contracts should have their own `Cargo.toml` files that rely on the top-level `Cargo.toml` workspace for their dependencies.
-- Frontend libraries can be added to the top-level directory as well. If you initialized this project with a frontend template via `--frontend-template` you will have those files already included.
+## Test
+
+```bash
+cargo test
+```
+
+## Highlights
+
+- Single-transaction payouts to any number of heirs via basis-point splits.
+- On-chain yield accumulation supplied to lending/liquidity vaults.
+- Proof-of-life pings and inactivity activation.
+- RAII-style reentrancy guard enforced on financial entry points.
+- Loan NFTs intentionally non-transferable while the loan is active.
+
+For a deep dive see [docs/contracts.md](../docs/contracts.md) (repo root docs).
