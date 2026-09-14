@@ -1,6 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# ─── Dependencies ───────────────────────────────────────────────
 /node_modules
 /frontend/node_modules
 /.pnp
@@ -11,43 +9,41 @@
 !.yarn/releases
 !.yarn/versions
 
-# Rust build artifacts (these are auto-generated; 1-3 GB each)
+# ─── Rust build artifacts ───────────────────────────────────────
 /backend/target
 /contracts/target
 
-# testing
+# ─── Testing ────────────────────────────────────────────────────
 /coverage
+/frontend/coverage
 /playwright-report
 /test-results
-**/test_snapshots/
-test_snapshots/
 *.proptest-regressions
 
-
-# next.js
+# ─── Next.js ────────────────────────────────────────────────────
 /.next/
 /frontend/.next/
 /out/
+/next-env.d.ts
+*.tsbuildinfo
 
-# production
-/build
+# ─── Env files (opt-in for committing if needed) ─────────────────
+.env*
+!.env.example
+!frontend/.env.example
 
-# misc
+# ─── Editor / OS ────────────────────────────────────────────────
+.vscode/
+.idea/
 .DS_Store
 *.pem
 
-# debug
+# ─── Debug logs ─────────────────────────────────────────────────
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
+# ─── Vercel ─────────────────────────────────────────────────────
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
