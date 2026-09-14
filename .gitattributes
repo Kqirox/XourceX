@@ -1,0 +1,23 @@
+# Normalise line endings and lock binary handling across all platforms.
+* text=auto
+
+*.rs text
+*.toml text
+*.ts text
+*.tsx text
+*.json text
+*.yml text
+*.yaml text
+*.md text
+*.sh text
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.wasm binary
+*.so binary
+*.dll binary
+*.dylib binary
+*.pdf binary
+*.mmdb binary
