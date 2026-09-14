@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible defect in XourceX
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Search existing issues first.
+  - type: input
+    id: component
+    attributes:
+      label: Component
+      description: Which layer is affected?
+      placeholder: contracts / backend / frontend
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Include exact commands and inputs.
+      placeholder: |
+        1. ...
+        2. ...
+        Expected: ... Actual: ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Output
+      description: Paste relevant logs, errors, or stack traces.
+      render: shell
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical (value/funds affected)
+    validations:
+      required: true
