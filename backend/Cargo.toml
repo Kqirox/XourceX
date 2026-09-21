@@ -65,7 +65,7 @@ hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
 jsonwebtoken = "9.0"
-base64 = "0.21"
+base64 = "0.22"
 stellar-strkey = "0.0.13"
 ed25519-dalek = { version = "2.1", features = ["pkcs8", "rand_core"] }
 stellar-xdr = { version = "27", features = ["base64"] }

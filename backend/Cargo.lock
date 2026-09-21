@@ -1198,45 +1198,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "xourcex-backend"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "argon2",
- "axum",
- "base64 0.21.7",
- "chrono",
- "dashmap",
- "dotenvy",
- "ed25519-dalek",
- "hex",
- "hmac",
- "jsonwebtoken",
- "log",
- "maxminddb",
- "once_cell",
- "printpdf",
- "prometheus",
- "rand 0.8.7",
- "redis",
- "reqwest",
- "rust_decimal",
- "serde",
- "serde_json",
- "sha2",
- "sqlx",
- "stellar-strkey",
- "stellar-xdr",
- "thiserror 1.0.69",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "ipnet"
 version = "2.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3566,6 +3527,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
 dependencies = [
  "tap",
+]
+
+[[package]]
+name = "xourcex-backend"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "argon2",
+ "axum",
+ "base64 0.22.1",
+ "chrono",
+ "dashmap",
+ "dotenvy",
+ "ed25519-dalek",
+ "hex",
+ "hmac",
+ "jsonwebtoken",
+ "log",
+ "maxminddb",
+ "once_cell",
+ "printpdf",
+ "prometheus",
+ "rand 0.8.7",
+ "redis",
+ "reqwest",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "stellar-strkey",
+ "stellar-xdr",
+ "thiserror 1.0.69",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
