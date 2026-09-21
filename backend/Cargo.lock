@@ -1198,45 +1198,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "xourcex-backend"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "argon2",
- "axum",
- "base64 0.21.7",
- "chrono",
- "dashmap",
- "dotenvy",
- "ed25519-dalek",
- "hex",
- "hmac",
- "jsonwebtoken",
- "log",
- "maxminddb",
- "once_cell",
- "printpdf",
- "prometheus",
- "rand 0.8.7",
- "redis",
- "reqwest",
- "rust_decimal",
- "serde",
- "serde_json",
- "sha2",
- "sqlx",
- "stellar-strkey",
- "stellar-xdr",
- "thiserror 1.0.69",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "ipnet"
 version = "2.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2841,9 +2802,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.53.0"
+version = "1.53.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d988bcd52dbe076d3d46903332f58c912b87a2c49b1428419a5845154762ffee"
+checksum = "202caea871b69668250d242070849eb495be178ed697a3e98aebce5bc81a0bed"
 dependencies = [
  "bytes",
  "libc",
@@ -3566,6 +3527,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
 dependencies = [
  "tap",
+]
+
+[[package]]
+name = "xourcex-backend"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "argon2",
+ "axum",
+ "base64 0.21.7",
+ "chrono",
+ "dashmap",
+ "dotenvy",
+ "ed25519-dalek",
+ "hex",
+ "hmac",
+ "jsonwebtoken",
+ "log",
+ "maxminddb",
+ "once_cell",
+ "printpdf",
+ "prometheus",
+ "rand 0.8.7",
+ "redis",
+ "reqwest",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "stellar-strkey",
+ "stellar-xdr",
+ "thiserror 1.0.69",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
